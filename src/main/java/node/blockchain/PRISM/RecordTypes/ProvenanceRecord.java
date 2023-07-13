@@ -17,6 +17,15 @@ public class ProvenanceRecord extends Record {
     protected String task; // Public key string of sender
     protected List<MinerData> minerData;
     protected float minimumCorrectTime;
+    protected String answerHash;
+
+    public String getAnswerHash() {
+        return answerHash;
+    }
+
+    public void setAnswerHash(String answerHash) {
+        this.answerHash = answerHash;
+    }
 
     public float getMinimumCorrectTime() {
         return minimumCorrectTime;

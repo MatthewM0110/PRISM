@@ -1,10 +1,12 @@
 package node;
 
 import node.blockchain.*;
+import node.blockchain.PRISM.MinerData;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
 import node.blockchain.PRISM.RepData;
 import node.blockchain.PRISM.WorkflowInceptionBlock;
+import node.blockchain.PRISM.RecordTypes.ProvenanceRecord;
 import node.blockchain.healthcare.*;
 import node.blockchain.defi.DefiBlock;
 import node.blockchain.defi.DefiTransaction;
@@ -54,6 +56,8 @@ import static node.communication.utils.Utils.*;
  */
 public class Node {
 
+    ArrayList<MinerData> minerDatas;
+
     /**
      * Node constructor creates node and begins server socket to accept connections
      *
@@ -83,6 +87,7 @@ public class Node {
         accountsLock = new Object();
         memPoolLock = new Object();
         blockLock = new Object();
+        answerHashLock = new Object();
 
         /* Multithreaded Counters for Stateful Servant */
         memPoolRounds = 0;
@@ -104,6 +109,7 @@ public class Node {
         localPeers = new ArrayList<>();
         mempool = new HashMap<>();
         accountsToAlert = new HashMap<>();
+                minerDatas = new ArrayList<>();
 
         /* Public-Private (DSA) Keys */
         KeyPair keys = generateDSAKeyPair();
@@ -416,7 +422,8 @@ public class Node {
                     quorumReadyVotes++;
                     if (quorumReadyVotes == quorum.size() - 1) {
                         quorumReadyVotes = 0;
-                        sendMempoolHashes();
+                        delegateWork();
+
                     }
 
                 }
@@ -432,39 +439,94 @@ public class Node {
     }
 
     public void delegateWork() {
+        synchronized(lock){
+            minerDatas = new ArrayList<>();
 
-        HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their counts.
+            HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their counts.
 
-        for (Address address : localPeers) {
-            if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-                // if my neighbour is a quorum member, return
+            for (Address address : localPeers) {
+                if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
+                    // if my neighbour is a quorum member, returndoWork
 
-                Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool),
-                        myAddress);
-                String hash = null;
+                    Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool),
+                            myAddress);
+                    String hash = null;
 
-                if (reply.getRequest().name().equals("COMPLETED_WORK")) {
-                    hash = Hashing.getSHAString((String) reply.getMetadata());
+                    if (reply.getRequest().name().equals("COMPLETED_WORK")) {
+                        hash = Hashing.getSHAString((String) reply.getMetadata());
 
-                    // Check if the hash is already in the map. If it is, increment its count.
-                    // Otherwise, add it to the map with a count of 1.
-                    if (minerOutput.containsKey(hash)) {
-                        minerOutput.put(hash, minerOutput.get(hash) + 1);
-                    } else {
-                        minerOutput.put(hash, 1);
+                        // Check if the hash is already in the map. If it is, increment its count.
+                        // Otherwise, add it to the map with a count of 1.
+                        if (minerOutput.containsKey(hash)) {
+                            minerOutput.put(hash, minerOutput.get(hash) + 1);
+                        } else {
+                            minerOutput.put(hash, 1);
+                        }
                     }
-
                 }
             }
-        }
 
+            String popularHash = "";
+
+            for(String hash : minerOutput.keySet()){
+                if(minerOutput.get(popularHash) == null) popularHash = hash;
+
+                if(minerOutput.get(hash) > minerOutput.get(popularHash)){
+                    popularHash = hash;
+                }
+            }
+
+            sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
+        }
     }
+
+    private ArrayList<String> quorumAnswerHashes;
+
+    public void recieveAnswerHash(String hash){
+        synchronized(answerHashLock){
+            quorumAnswerHashes.add(hash);
+
+            /* If we have all the answer hashes */
+            if(quorumAnswerHashes.size() == deriveQuorum(blockchain.getLast(), 0).size()){
+                /* See which is most voted between Q member */
+                HashMap<String, Integer>hashVotes = new HashMap<>();
+
+                for(String hashAnswer : quorumAnswerHashes){
+                    if(hashVotes.get(hashAnswer) == null){
+                        hashVotes.put(hashAnswer, 1);
+                    }else{
+                        hashVotes.put(hash, hashVotes.get(hash) + 1);
+                    }
+                }
+
+                String popularHash = "";
+
+                for(String hashAnswer : hashVotes.keySet()){
+                    if(hashVotes.get(popularHash) == null) popularHash = hashAnswer;
+
+                    if(hashVotes.get(hashAnswer) > hashVotes.get(popularHash)){
+                        popularHash = hashAnswer;
+                    }
+                }
+                HashSet<String> keys = new HashSet<String>(mempool.keySet());
+                PRISMTransaction prismTransaction = null;
+                for (String key : keys) {
+                    prismTransaction = (PRISMTransaction) mempool.get(key); // ASSUMING 1 TX
+                }
+
+                ProvenanceRecord pr = (ProvenanceRecord) prismTransaction.getRecord();
+                pr.setAnswerHash(popularHash);
+                sendMempoolHashes();
+            }
+        }
+    }
+
 
     public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
         PRISMTransaction PRISMtx = null;
     
         for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
-            // transaction per block)
+            // transaction per block) - maybe
             PRISMtx = (PRISMTransaction) txList.get(txHash);
         }
     
@@ -475,7 +537,7 @@ public class Node {
         String hash = null;
         
         if (Math.random() < accuracyPercent && PRISMtx != null) {
-            hash = Hashing.getSHAString(PRISMtx.getUID());
+            hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
         } else {
             hash = "aaa"; // assuming you have a method to generate random hashes
         }
@@ -494,6 +556,7 @@ public class Node {
         synchronized (memPoolLock) {
             // Here
             stateChangeRequest(2);
+
 
             if (DEBUG_LEVEL == 1)
                 System.out.println("Node " + myAddress.getPort() + ": sendMempoolHashes invoked");
@@ -1275,7 +1338,7 @@ public class Node {
 
     private final int MAX_PEERS, NUM_NODES, QUORUM_SIZE, MIN_CONNECTIONS, DEBUG_LEVEL, MINIMUM_TRANSACTIONS;
     private final Object lock, quorumLock, memPoolLock, quorumReadyVotesLock, memPoolRoundsLock, sigRoundsLock,
-            blockLock, accountsLock;
+            blockLock, accountsLock, answerHashLock;
     private int quorumReadyVotes, memPoolRounds;
     private ArrayList<Address> globalPeers;
     private ArrayList<Address> localPeers;
