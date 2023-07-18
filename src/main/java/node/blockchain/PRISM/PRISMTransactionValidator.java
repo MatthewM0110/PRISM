@@ -26,7 +26,7 @@ public class PRISMTransactionValidator extends TransactionValidator {
             int accuracyCount = 0;
 
             for (Block block : blockchain) { // For each block
-                if (block instanceof WorkflowTaskBlock) { // If that block is a WTB
+                if (block instanceof WorkflowTaskBlock) { // If that block is a WTB TODO: reputation should still be used by nodes for other blocks, but this isn't that important if you only have one workflow
                     for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
                         Float myTime = 0f;
                         PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize

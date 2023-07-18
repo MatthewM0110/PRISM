@@ -1,8 +1,11 @@
 package node;
 
 import node.blockchain.*;
+import node.blockchain.PRISM.EnumSubWorkflow;
+import node.blockchain.PRISM.MinerData;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
+import node.blockchain.PRISM.SubWorkflow;
 import node.blockchain.PRISM.WorkflowInceptionBlock;
 import node.blockchain.healthcare.*;
 import node.blockchain.defi.DefiBlock;
@@ -431,28 +434,64 @@ public class Node {
     }
 
     public void delegateWork() {
+        Random rand = new Random();
+        int myPick = rand.nextInt(10);
+        SubWorkflow myWorkflow;
+        if (myPick == 0) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_0.getSubWorkflow(); 
+        } else if (myPick == 1) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_1.getSubWorkflow(); 
+        } else if (myPick == 2) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_2.getSubWorkflow(); 
+        } else if (myPick == 3) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_3.getSubWorkflow(); 
+        } else if (myPick == 4) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_4.getSubWorkflow(); 
+        } else if (myPick == 5) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_5.getSubWorkflow(); 
+        } else if (myPick == 6) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_6.getSubWorkflow(); 
+        } else if (myPick == 7) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_7.getSubWorkflow(); 
+        } else if (myPick == 8) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_8.getSubWorkflow(); 
+        } else {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_9.getSubWorkflow(); 
+        } 
+        int iterator = 1;
+
         for (Address address : localPeers) {
             if (deriveQuorum(blockchain.getLast(), 0).contains(address)) {
                 return; // if my neighbour is a quorum member, return
             }
-            Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool), myAddress);
+            //TODO: do something with the mempool - I replaced mempool with myworkflow
+
+            Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, myWorkflow.subSubWorkflow(iterator)), myAddress);
             String hash = null;
 
             if (reply.getRequest().name().equals("COMPLETED_WORK")) {
                 hash = Hashing.getSHAString((String) reply.getMetadata());
             }
 
-            // Do something with the hash
+            // TODO: Do something with the hash
+            if(myWorkflow.getNumSteps() == iterator) {
+                break;
+            }
+            iterator++;
         }
 
     }
 
     public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
+        PRISMTransaction PRISMtx;
         for (String txHash : txList.keySet()) { // For each transaction in that block
-            PRISMTransaction PRISMtx = (PRISMTransaction) txList.get(txHash);
+            PRISMtx = (PRISMTransaction) txList.get(txHash);
 
         }
-        // Do work
+        // Do work 
+        // MinerData(Address address, long timestamp, int accuracy, String outputHash)
+        // TODO: Finish this! Maybe with hashCode() ???
+        // MinerData myData = new MinerData(myAddress, ?, ?, ?);
 
     }
 
