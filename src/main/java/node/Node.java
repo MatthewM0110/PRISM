@@ -173,9 +173,14 @@ public class Node {
         } else if (USE.equals("PRISM")) {
 
             for (Address address : globalPeers) {
-                repData.put(address, new RepData(0, 0, 0, 0));
+                repData.put(address, new RepData());
+                
             }
-            addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0)); // Creating a blank
+             for (Address address : repData.keySet()) {
+               System.out.println(repData.get(address).toString());
+                
+            }
+            addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0, minerDatas)); // Creating a blank
                                                                                        // genesis block
         }
     }
@@ -451,7 +456,7 @@ public class Node {
             System.out.println("I am quorum members delegating work");
             for (Address address : localPeers) {
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-
+                    minerDatas.put(address,new MinerData(address, 0, "0"));
                     long startTime = System.currentTimeMillis();
                     // if my neighbour is a quorum member, returndoWork
                     System.out.println("send work to " + address.toString());
@@ -475,7 +480,7 @@ public class Node {
                     }
                 }
             }
-            
+
             String popularHash = "";
 
             for (String hash : minerOutput.keySet()) {
@@ -727,7 +732,7 @@ public class Node {
                     // How to do for multiple block types?
                     quorumBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size());
+                            blockchain.size(), minerDatas);
                 }
 
             } catch (NoSuchAlgorithmException e) {
@@ -1058,7 +1063,7 @@ public class Node {
                 try {
                     newBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size());
+                            blockchain.size(), minerDatas);
                 } catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException(e);
                 }
@@ -1100,6 +1105,9 @@ public class Node {
 
         blockchain.add(block);
         System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values());
+        for(Address address : repData.keySet()){
+            System.out.println(repData.get(address).getCurrentReputation());
+        }
 
         if (USE.equals("Defi")) {
             HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();
@@ -1129,7 +1137,7 @@ public class Node {
             }
         } else {
             // PRISM
-            PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
+            PRISMTransactionValidator txValidator = new PRISMTransactionValidator(); 
             repData = txValidator.calculateReputationsData(block, repData);
 
         }

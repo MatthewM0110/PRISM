@@ -30,66 +30,66 @@ public class PRISMTransactionValidator extends TransactionValidator {
      * @return
      */
     public HashMap<Address, RepData> calculateReputationsData(Block block, HashMap<Address, RepData> repData) {
+        System.out.println("Printing RDATA" + repData.values().toString());
+        PRISMBlock pBlock = (PRISMBlock) block;
+        float minimumTime = Float.MAX_VALUE;
+        for (Address address : pBlock.getMinerData().keySet()) {
+            minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
+        }
+        for (Address address : pBlock.getMinerData().keySet()) { // Get the miner data in that P rovenanceRecord
+
+            RepData rData = repData.get(address);
+            MinerData mData = pBlock.getMinerData().get(address);
+            rData.addBlocksParticipated();
+            if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
+                rData.addAccuracySummation(1);
+                rData.addAccuracyCount();
+            } else {
+                rData.addAccuracySummation(-1);
+            }
+
+            rData.addTimeSummation(minimumTime - mData.getTimestamp());
+
+            rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
+                                                                    // reputation
+            repData.put(address, rData); // Update the reputation data for the miner
+        }
+
+        return repData; // Return the modified reputation data
+    }
+    public RepData calculateReputationData(Block block, Address targetAddress, HashMap<Address, RepData> repData) {
+        PRISMBlock pBlock = (PRISMBlock) block;
+        float minimumTime = Float.MAX_VALUE;
     
-        for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
-            PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize PRISMTransaction
-
-            if (PRISMtx.getRecord() instanceof ProvenanceRecord) { // If that PRISMtx contains a ProvenanceRecord (which
-                                                                   // is should since it's a WorkFlowTaskBlock)
-                ProvenanceRecord pr = (ProvenanceRecord) PRISMtx.getRecord();
-
-                for (MinerData minerData : pr.getMinerData()) { // Get the miner data in that ProvenanceRecord
-                    RepData minerRepData = repData.get(minerData.getAddress()); // Get the existing reputation data for
-                                                                                // the miner
-
-                    minerRepData.addTimeSummation(minerData.getTimestamp() - pr.getMinimumCorrectTime()); // Update time
-                                                                                                          // summation
-                    minerRepData.addBlocksParticipated(); // Increment the block participation count (Phi)
-                    minerRepData.addAccuracySummation(minerData.getAccuracy()); // Update accuracy summation (A)
-
-                    if (minerData.getAccuracy() == 1)
-                        minerRepData.addAccuracyCount(); // Increment the accuracy count (T) if accuracy is 1
-
-                    minerRepData.setCurrentReputation(calculateReputation(minerRepData)); // Calculate current
-                                                                                          // reputation
-                    repData.put(minerData.getAddress(), minerRepData); // Update the reputation data for the miner
-                }
-            }
+        // calculate minimum time
+        for (Address address : pBlock.getMinerData().keySet()) {
+            minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
-        return repData; // Return the modified reputation data
-    }
-
-    public Map<Address, RepData> calculateReputationData(Block block, Address targetAddress, Map<Address, RepData> repData) {
-        for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
-            PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize PRISMTransaction
-
-            if (PRISMtx.getRecord() instanceof ProvenanceRecord) { // If that PRISMtx contains a ProvenanceRecord (which
-                                                                   // it should since it's a WorkFlowTaskBlock)
-                ProvenanceRecord pr = (ProvenanceRecord) PRISMtx.getRecord();
-
-                for (MinerData minerData : pr.getMinerData()) { // Get the miner data in that ProvenanceRecord
-                    if (minerData.getAddress().equals(targetAddress)) { // Only update data for the target miner
-                        RepData minerRepData = repData.get(minerData.getAddress()); // Get the existing reputation data
-                                                                                    // for the miner
-
-                        minerRepData.addTimeSummation(minerData.getTimestamp() - pr.getMinimumCorrectTime()); // Update
-                                                                                                              // time
-                                                                                                              // summation
-                        minerRepData.addBlocksParticipated(); // Increment the block participation count (Phi)
-                        minerRepData.addAccuracySummation(minerData.getAccuracy()); // Update accuracy summation (A)
-
-                        if (minerData.getAccuracy() == 1)
-                            minerRepData.addAccuracyCount(); // Increment the accuracy count (T) if accuracy is 1
-
-                        minerRepData.setCurrentReputation(calculateReputation(minerRepData)); // Calculate current
-                                                                                              // reputation
-                        repData.put(minerData.getAddress(), minerRepData); // Update the reputation data for the miner
-                    }
-                }
+    
+        // Check if the targetAddress is present in the minerData
+        if(pBlock.getMinerData().containsKey(targetAddress)) {
+            RepData rData = repData.get(targetAddress);
+            MinerData mData = pBlock.getMinerData().get(targetAddress);
+    
+            rData.addBlocksParticipated();
+    
+            if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
+                rData.addAccuracySummation(1);
+                rData.addAccuracyCount();
+            } else {
+                rData.addAccuracySummation(-1);
             }
+    
+            rData.addTimeSummation(minimumTime - mData.getTimestamp());
+    
+            rData.setCurrentReputation(calculateReputation(rData)); // Calculate current reputation
+    
+            repData.put(targetAddress, rData); // Update the reputation data for the targetAddress
         }
-        return repData; // Return the modified reputation data
+    
+        return repData.get(targetAddress); // Return the modified reputation data for targetAddress
     }
+    
 
     public float calculateReputation(RepData repData) {
         return (((alpha * repData.getAccurarySummation())
@@ -103,13 +103,13 @@ public class PRISMTransactionValidator extends TransactionValidator {
         // Here we can check what the RecordType is and validate it this way.
         PRISMTransaction transaction = (PRISMTransaction) objects[0];
         if (transaction.getRecord().getRecordType().equals(RecordType.ProvenanceRecord)) {
-            
 
             return true;
-        } 
+        }
 
-        return false; 
-    } 
+        return false;
+    }
+
     @Override
     public boolean validate(Object[] objects) {
         // TODO Auto-generated method stub
@@ -118,13 +118,12 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
 }
 
-
 /*
- *  for(MinerData md : minerData){
-            Float minTime = Float.MAX_VALUE;
-            if(md.getAccuracy() == 1 && md.getTimestamp() < minTime){
-                this.minimumCorrectTime = minTime;
-            }
-
-        }
+ * for(MinerData md : minerData){
+ * Float minTime = Float.MAX_VALUE;
+ * if(md.getAccuracy() == 1 && md.getTimestamp() < minTime){
+ * this.minimumCorrectTime = minTime;
+ * }
+ * 
+ * }
  */

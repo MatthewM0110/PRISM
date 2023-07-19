@@ -10,12 +10,8 @@ public class RepData {
     float accurarySummation;
     int accuracyCount;
 
-    public RepData(int blocksParticipated, float timeSummation, float accurarySummation, int accuracyCount) {
+    public RepData() {
         this.currentReputation = 0;
-        this.blocksParticipated = blocksParticipated;
-        this.timeSummation = timeSummation;
-        this.accurarySummation = accurarySummation;
-        this.accuracyCount = accuracyCount;
     }
     
     public void addTimeSummation(float time){
@@ -60,4 +56,8 @@ public class RepData {
     public void setAccuracyCount(int accuracyCount) {
         this.accuracyCount = accuracyCount;
     }  
+
+    public String toString() {
+        return "Blocks participated " + getBlocksParticipated(); 
+    }
 }
