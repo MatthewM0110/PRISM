@@ -1138,8 +1138,8 @@ public class Node {
         } else {
             // PRISM
             PRISMTransactionValidator txValidator = new PRISMTransactionValidator(); 
+       
             repData = txValidator.calculateReputationsData(block, repData);
-
         }
 
         ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);

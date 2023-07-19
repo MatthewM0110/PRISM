@@ -30,14 +30,14 @@ public class PRISMTransactionValidator extends TransactionValidator {
      * @return
      */
     public HashMap<Address, RepData> calculateReputationsData(Block block, HashMap<Address, RepData> repData) {
-        System.out.println("Printing RDATA" + repData.values().toString());
+   
         PRISMBlock pBlock = (PRISMBlock) block;
         float minimumTime = Float.MAX_VALUE;
         for (Address address : pBlock.getMinerData().keySet()) {
             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
         for (Address address : pBlock.getMinerData().keySet()) { // Get the miner data in that P rovenanceRecord
-
+            System.out.println(address.toString()); 
             RepData rData = repData.get(address);
             MinerData mData = pBlock.getMinerData().get(address);
             rData.addBlocksParticipated();
