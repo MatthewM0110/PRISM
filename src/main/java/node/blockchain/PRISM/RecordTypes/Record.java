@@ -1,7 +1,9 @@
 package node.blockchain.PRISM.RecordTypes;
 
-public class Record {
-    public enum RecordType {
+import java.io.Serializable;
+
+public class Record implements Serializable{
+    public enum RecordType  {
         Project,
         ProvenanceRecord,
       

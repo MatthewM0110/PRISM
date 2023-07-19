@@ -1,6 +1,7 @@
     package node.blockchain.PRISM.RecordTypes;
 
-    import java.util.List;
+    import java.io.Serializable;
+import java.util.List;
 
     import node.blockchain.Transaction;
     import node.blockchain.PRISM.MinerData;
@@ -8,7 +9,7 @@
     import node.blockchain.PRISM.RecordTypes.Record.RecordType;
     import node.communication.utils.Hashing;
 
-    public class ProvenanceRecord extends Record {
+    public class ProvenanceRecord extends Record implements Serializable {
 
         /*
         * A provenance record will be contained in a workflowTaskBlock

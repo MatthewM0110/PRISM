@@ -95,9 +95,15 @@ public class ServerConnection extends Thread {
                 node.receiveSkeleton(blockSkeleton);
                 break;
             case ALERT_WALLET:
+            if(node.USE.equals("Defi")){
                 Object[] data = (Object[]) incomingMessage.getMetadata();
                 node.alertWallet((String) data[0], (Address) data[1]);
-                break;
+            }else if(node.USE.equals("PRISM")){
+                Address incomingAddress = (Address) incomingMessage.getMetadata();
+                node.alertWallet(null, incomingAddress);
+            }
+            
+            break;
             case DELEGATE_WORK:
                 HashMap<String,Transaction> mempool = (HashMap<String,Transaction>) incomingMessage.getMetadata();
                 node.doWork(mempool, oin, oout);
