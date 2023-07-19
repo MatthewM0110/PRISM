@@ -1,4 +1,5 @@
 package client;
+
 import java.util.*;
 import java.io.*;
 import java.net.Socket;
@@ -15,14 +16,12 @@ import node.blockchain.defi.DefiTransaction;
 import node.blockchain.merkletree.MerkleTreeProof;
 
 public class PRISMClient {
-    
-    
+
     BufferedReader reader; // To read user input
     Address myAddress;
     ArrayList<Address> fullNodes; // List of full nodes we want to use
     Object updateLock; // Lock for multithreading
     boolean test; // Boolean for test vs normal output
-
 
     public PRISMClient(BufferedReader reader, Address myAddress, ArrayList<Address> fullNodes, Object updateLock) {
         this.reader = reader;
@@ -30,33 +29,36 @@ public class PRISMClient {
         this.fullNodes = fullNodes;
         this.updateLock = updateLock;
     }
-    
-    protected void submitProvenanceRecord() throws IOException{
+
+    protected void submitProvenanceRecord(BufferedReader reader) throws IOException {
+
         alertFullNode();
         System.out.println("Generating Provenance Record");
-        System.out.println("WorkflowID:");
         String workflowID = reader.readLine();
-        System.out.println("inputData:");
-        String inputData = reader.readLine(); 
-        System.out.println("task:");
+
+        System.out.println("WorkflowID:" + workflowID);
+        String inputData = reader.readLine();
+
+        System.out.println("inputData:" + inputData);
         String task = reader.readLine();
-        
-        submitProvenanceTransaction(new PRISMTransaction(new ProvenanceRecord(inputData, task, workflowID), String.valueOf(System.currentTimeMillis()) ), fullNodes.get(0));
+
+        System.out.println("task:" + task);
+
+        submitProvenanceTransaction(new PRISMTransaction(new ProvenanceRecord(inputData, task, workflowID),
+                String.valueOf(System.currentTimeMillis())), fullNodes.get(0));
         System.out.println("PRISM Transaction Provenance Record Submitted");
-    }   
+    }
 
-
-    protected void alertFullNode() throws IOException{
-        synchronized(updateLock){
+    protected void alertFullNode() throws IOException {
+        synchronized (updateLock) {
             Messager.sendOneWayMessage(new Address(fullNodes.get(0).getPort(), fullNodes.get(0).getHost()),
-            new Message(Message.Request.ALERT_WALLET, myAddress), myAddress);
+                    new Message(Message.Request.ALERT_WALLET, myAddress), myAddress);
             System.out.println("PrismCleitn alerted full node");
 
         }
     }
 
-
-    protected void submitProvenanceTransaction(PRISMTransaction tx, Address address){
+    protected void submitProvenanceTransaction(PRISMTransaction tx, Address address) {
 
         try {
             Socket s = new Socket(address.getHost(), address.getPort());
