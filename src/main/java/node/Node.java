@@ -296,11 +296,11 @@ public class Node {
                 }
             }
 
-            TransactionValidator tv;
+            PRISMTransactionValidator tv = null;
             Object[] validatorObjects = new Object[3];
 
             if (USE.equals("Defi")) {
-                tv = new DefiTransactionValidator();
+               // tv = new DefiTransactionValidator();
 
                 validatorObjects[0] = transaction;
                 validatorObjects[1] = accounts;
@@ -314,10 +314,10 @@ public class Node {
                 validatorObjects[0] = transaction;
 
             } else {
-                tv = new HCTransactionValidator(); // To be changed to another use case in the future
+                tv = new PRISMTransactionValidator(); // To be changed to another use case in the future
             }
 
-            if (!tv.validate(validatorObjects)) {
+            if (!tv.validate(validatorObjects, repData)) {
                 if (DEBUG_LEVEL == 1) {
                     System.out.println("Node " + myAddress.getPort() + "Transaction not valid");
                 }
@@ -1355,7 +1355,7 @@ public class Node {
     private Block quorumBlock;
     private PrivateKey privateKey;
     private int state;
-    private final String USE;
+    public final String USE;
 
     public HashMap<Address, RepData> repData = new HashMap<>();
     private float accuracyPercent; // value between 0 and 1 that determines how likely this node is to get a
