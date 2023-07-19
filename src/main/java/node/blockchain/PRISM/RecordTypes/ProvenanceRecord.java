@@ -59,7 +59,7 @@ public class ProvenanceRecord extends Record {
         this.minerData = minerData;
     }
 
-    public ProvenanceRecord(String inputData, String task, String workflowID, List<MinerData> minerData) {
+    public ProvenanceRecord(String inputData, String task, String workflowID) {
         super(RecordType.ProvenanceRecord, workflowID);
         this.inputData = inputData;
         this.task = task;

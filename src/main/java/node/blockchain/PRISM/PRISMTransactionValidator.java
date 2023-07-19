@@ -30,7 +30,10 @@ public class PRISMTransactionValidator extends TransactionValidator {
      * @return
      */
     public HashMap<Address, RepData> calculateReputationsData(Block block, HashMap<Address, RepData> repData) {
-
+        if(block.getPrevBlockHash() == "000000"){
+            
+            return repData;
+        }
         for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
             PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize PRISMTransaction
 
@@ -103,12 +106,13 @@ public class PRISMTransactionValidator extends TransactionValidator {
         // Here we can check what the RecordType is and validate it this way.
         PRISMTransaction transaction = (PRISMTransaction) objects[0];
         if (transaction.getRecord().getRecordType().equals(RecordType.ProvenanceRecord)) {
-            return true;// Eventually, we want to check if a node has enough of a reputation to propose
-                        // a transaction.
+            
+
+            return true;
         } else if (transaction.getRecord().getRecordType().equals(RecordType.Project)) {
             Project project = (Project) transaction.getRecord();
 
-            if (repData.get(project.getAuthors()[0]).currentReputation > 0.5) {
+            if (repData.get(project.getAuthor()).currentReputation > 0.5) {
                 return true;
             }
 

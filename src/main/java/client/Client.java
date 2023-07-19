@@ -19,6 +19,7 @@ public class Client {
     Object updateLock; // Lock for multithreading
     boolean test; // Boolean for test vs normal output
     String use;
+    PRISMClient prismClient;
     DefiClient defiClient;
 
     public Client(int port, int testIterations){
@@ -28,7 +29,7 @@ public class Client {
         reader = new BufferedReader(new InputStreamReader(System.in));
         updateLock = new Object();
         defiClient = new DefiClient(updateLock, reader, myAddress, fullNodes);
-
+        prismClient = new PRISMClient(reader, myAddress, fullNodes, updateLock);
         if(testIterations > 0) defiClient.testNetwork(testIterations);
 
         /* Grab values from config file */
@@ -134,6 +135,7 @@ public class Client {
         while(!input.equals("exit") | !input.equals("e")){
             System.out.print(">");
             input = mainReader.readLine();
+            System.out.println("Input " + input);
             wallet.interpretInput(input);
         }
     }
@@ -149,22 +151,22 @@ public class Client {
 
                 /* Add account (or something similar depends on use) */
                 case("a"):
-                    if(use.equals("Defi")) defiClient.addAccount();
+                    if(use.equals("PRISM")) defiClient.addAccount();
                     break;
 
                 /* Submit Transaction */
                 case("t"):
-                    if(use.equals("Defi")) defiClient.submitTransaction();
+                    if(use.equals("PRISM")) prismClient.submitProvenanceRecord();
                     break;
 
                 /* Print accounts (or something similar depends on use) */
                 case("p"):
-                    if(use.equals("Defi")) defiClient.printAccounts();
+                    if(use.equals("PRISM")) defiClient.printAccounts();
                     break;
 
                 /* Print the specific usage / commmands */
                 case("h"):
-                    if(use.equals("Defi")) defiClient.printUsage();
+                    if(use.equals("PRISM")) defiClient.printUsage();
                     break;
 
                 /* Update full nodes */

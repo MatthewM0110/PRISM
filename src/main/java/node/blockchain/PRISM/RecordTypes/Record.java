@@ -4,8 +4,7 @@ public class Record {
     public enum RecordType {
         Project,
         ProvenanceRecord,
-        InvalidTask,
-        InvalidData
+      
     }
 
     private RecordType recordType;  

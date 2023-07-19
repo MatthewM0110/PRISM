@@ -5,7 +5,7 @@ import node.blockchain.PRISM.MinerData;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
 import node.blockchain.PRISM.RepData;
-import node.blockchain.PRISM.WorkflowInceptionBlock;
+import node.blockchain.PRISM.PRISMBlock;
 import node.blockchain.PRISM.RecordTypes.ProvenanceRecord;
 import node.blockchain.healthcare.*;
 import node.blockchain.defi.DefiBlock;
@@ -158,6 +158,9 @@ public class Node {
     public void initializeBlockchain() {
         blockchain = new LinkedList<Block>();
 
+        
+
+
         if (USE.equals("Defi")) {
             accounts = new HashMap<>();
             // DefiTransaction genesisTransaction = new DefiTransaction("Bob", "Alice", 100,
@@ -171,7 +174,7 @@ public class Node {
         } else if (USE.equals("HC")) {
             addBlock(new HCBlock(new HashMap<String, Transaction>(), "000000", 0));
         } else if (USE.equals("PRISM")) {
-            addBlock(new WorkflowInceptionBlock(new HashMap<String, Transaction>(), "000000", 0)); // Creating a blank
+            addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0)); // Creating a blank
                                                                                                    // genesis block
         }
     }
@@ -454,7 +457,6 @@ public class Node {
 
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
                         hash = Hashing.getSHAString((String) reply.getMetadata());
-
                         // Check if the hash is already in the map. If it is, increment its count.
                         // Otherwise, add it to the map with a count of 1.
                         if (minerOutput.containsKey(hash)) {
@@ -531,7 +533,7 @@ public class Node {
         }
     
         // Percentage (from 0 to 1) that controls whether to use PRISMtx.getUID hash or a random hash
-        ; // example value, adjust as needed
+        // example value, adjust as needed
     
         // Based on a percentage (0 to 1), this should set hash to the hash of PRISMtx.getUID. Otherwise, it returns a random hash
         String hash = null;
@@ -552,6 +554,8 @@ public class Node {
             e.printStackTrace();
         }
     }
+
+
     public void sendMempoolHashes() {
         synchronized (memPoolLock) {
             // Here
@@ -671,7 +675,7 @@ public class Node {
             /* Make sure compiled transactions don't conflict */
             HashMap<String, Transaction> blockTransactions = new HashMap<>();
 
-            TransactionValidator tv;
+            TransactionValidator tv = null;
             if (USE.equals("Defi")) {
                 tv = new DefiTransactionValidator();
             } else if (USE.equals("HC")) {
@@ -679,9 +683,7 @@ public class Node {
                 tv = new HCTransactionValidator();
             } else if (USE.equals("PRISM")) {
                 tv = new PRISMTransactionValidator();
-            } else {
-                tv = new DefiTransactionValidator();
-            }
+            } 
 
             for (String key : mempool.keySet()) {
                 Transaction transaction = mempool.get(key);
@@ -1041,8 +1043,7 @@ public class Node {
                 }
             } else if (USE.equals("PRISM")) {
                 try {
-                    newBlock = new WorkflowInceptionBlock(blockTransactions, // Again, how to do for multiple block
-                                                                             // types?
+                    newBlock = new PRISMBlock(blockTransactions, 
                             getBlockHash(blockchain.getLast(), 0),
                             blockchain.size());
                 } catch (NoSuchAlgorithmException e) {
@@ -1170,7 +1171,7 @@ public class Node {
             Boolean quorumMember = false;
             for (Address quorumAddress : quorum) {
                 if (myAddress.equals(quorumAddress)) {
-                    quorumMember = true;
+                   quorumMember = true;
                 }
             }
             return quorumMember;
@@ -1189,7 +1190,10 @@ public class Node {
                 Random random = new Random(seed);
                 PRISMTransactionValidator tv = new PRISMTransactionValidator();
                 repData = tv.calculateReputationsData(block, repData);
-
+                if(repData == null){
+                    
+                        
+                }
                 // Sort the repData map by currentReputation values in descending order
                 LinkedHashMap<Address, RepData> sortedMap = repData.entrySet()
                         .stream()
@@ -1346,14 +1350,14 @@ public class Node {
     private HashMap<String, Integer> accounts;
     private ArrayList<BlockSignature> quorumSigs;
     private LinkedList<Block> blockchain;
-    private final Address myAddress;
+    public final Address myAddress;
     private ServerSocket ss;
     private Block quorumBlock;
     private PrivateKey privateKey;
     private int state;
     private final String USE;
 
-    private HashMap<Address, RepData> repData;
+    public HashMap<Address, RepData> repData = new HashMap<>();
     private float accuracyPercent; // value between 0 and 1 that determines how likely this node is to get a
                                    // correct answer as a miner.
 
