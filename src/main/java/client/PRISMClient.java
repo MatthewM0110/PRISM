@@ -43,9 +43,12 @@ public class PRISMClient {
         String task = reader.readLine();
 
         System.out.println("task:" + task);
+        ProvenanceRecord prec = new ProvenanceRecord(inputData, task, workflowID); 
+        System.out.println("this is created prec" + prec.toString()); 
 
-        submitProvenanceTransaction(new PRISMTransaction(new ProvenanceRecord(inputData, task, workflowID),
-                String.valueOf(System.currentTimeMillis())), fullNodes.get(0));
+        PRISMTransaction ptX = new PRISMTransaction(prec,String.valueOf(System.currentTimeMillis()));
+        System.out.println("PTX Information: " + ptX.getRecord().toString());
+        submitProvenanceTransaction(ptX, fullNodes.get(0));
         System.out.println("PRISM Transaction Provenance Record Submitted");
     }
 

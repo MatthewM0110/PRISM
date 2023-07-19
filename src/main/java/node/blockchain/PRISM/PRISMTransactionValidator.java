@@ -30,10 +30,7 @@ public class PRISMTransactionValidator extends TransactionValidator {
      * @return
      */
     public HashMap<Address, RepData> calculateReputationsData(Block block, HashMap<Address, RepData> repData) {
-        if(block.getPrevBlockHash() == "000000"){
-            
-            return repData;
-        }
+    
         for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
             PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize PRISMTransaction
 
@@ -109,21 +106,10 @@ public class PRISMTransactionValidator extends TransactionValidator {
             
 
             return true;
-        } else if (transaction.getRecord().getRecordType().equals(RecordType.Project)) {
-            Project project = (Project) transaction.getRecord();
+        } 
 
-            if (repData.get(project.getAuthor()).currentReputation > 0.5) {
-                return true;
-            }
-
-            return false;
-
-        }
-
-        return false;
-
-    }
-
+        return false; 
+    } 
     @Override
     public boolean validate(Object[] objects) {
         // TODO Auto-generated method stub
@@ -131,3 +117,14 @@ public class PRISMTransactionValidator extends TransactionValidator {
     }
 
 }
+
+
+/*
+ *  for(MinerData md : minerData){
+            Float minTime = Float.MAX_VALUE;
+            if(md.getAccuracy() == 1 && md.getTimestamp() < minTime){
+                this.minimumCorrectTime = minTime;
+            }
+
+        }
+ */

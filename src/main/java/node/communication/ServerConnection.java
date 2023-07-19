@@ -47,9 +47,10 @@ public class ServerConnection extends Thread {
         }
     }
 
-    public void handleRequest(Message incomingMessage, ObjectOutputStream oout, ObjectInputStream oin) throws IOException {
+    public void handleRequest(Message incomingMessage, ObjectOutputStream oout, ObjectInputStream oin)
+            throws IOException {
         Message outgoingMessage;
-        switch(incomingMessage.getRequest()){
+        switch (incomingMessage.getRequest()) {
             case REQUEST_CONNECTION:
                 Address address = (Address) incomingMessage.getMetadata();
                 if (node.eligibleConnection(address, true)) {
@@ -95,21 +96,24 @@ public class ServerConnection extends Thread {
                 node.receiveSkeleton(blockSkeleton);
                 break;
             case ALERT_WALLET:
-            if(node.USE.equals("Defi")){
-                Object[] data = (Object[]) incomingMessage.getMetadata();
-                node.alertWallet((String) data[0], (Address) data[1]);
-            }else if(node.USE.equals("PRISM")){
-                Address incomingAddress = (Address) incomingMessage.getMetadata();
-                node.alertWallet(null, incomingAddress);
-            }
-            
-            break;
+                if (node.USE.equals("Defi")) {
+                    Object[] data = (Object[]) incomingMessage.getMetadata();
+                    node.alertWallet((String) data[0], (Address) data[1]);
+                } else if (node.USE.equals("PRISM")) {
+                    Address incomingAddress = (Address) incomingMessage.getMetadata();
+                    node.alertWallet(null, incomingAddress);
+                }
+                break;
             case DELEGATE_WORK:
-                HashMap<String,Transaction> mempool = (HashMap<String,Transaction>) incomingMessage.getMetadata();
+                HashMap<String, Transaction> mempool = (HashMap<String, Transaction>) incomingMessage.getMetadata();
                 node.doWork(mempool, oin, oout);
                 break;
             case COMPLETED_WORK:
-                
+                Object[] data = (Object[]) incomingMessage.getMetadata();
+                break;
+            case RECEIVE_ANSWER_HASH:
+               String data2 =(String) incomingMessage.getMetadata();
+                node.recieveAnswerHash(data2);
                 break;
         }
     }

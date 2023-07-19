@@ -7,11 +7,12 @@ import node.blockchain.Block;
 import node.blockchain.Transaction;
 import node.blockchain.PRISM.RecordTypes.Project;
 import node.blockchain.defi.DefiTransaction;
+import node.communication.Address;
 
 public class PRISMBlock extends Block {
 
       
-
+    HashMap<Address, MinerData> minerData;
 
      public PRISMBlock(HashMap<String, Transaction> txList, String prevBlockHash, int blockId) {
 

@@ -3,12 +3,12 @@ package node.blockchain.PRISM;
 import node.communication.Address;
 
 public class MinerData {
-    
+
     private Address address;
+
     public Address getAddress() {
         return address;
     }
-
 
     public void setAddress(Address address) {
         this.address = address;
@@ -18,14 +18,21 @@ public class MinerData {
     private int accuracy; // either -1 or 1
     private String outputHash;
 
+    public String getOutputHash() {
+        return outputHash;
+    }
+
+    public void setOutputHash(String outputHash) {
+        this.outputHash = outputHash;
+    }
+
     public MinerData(Address address, long timestamp, int accuracy, String outputHash) {
         this.address = address;
         this.timestamp = timestamp;
         this.accuracy = accuracy;
         this.outputHash = outputHash;
     }
-    
-  
+
     public long getTimestamp() {
         return timestamp;
     }

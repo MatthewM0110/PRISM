@@ -56,7 +56,7 @@ import static node.communication.utils.Utils.*;
  */
 public class Node {
 
-    ArrayList<MinerData> minerDatas;
+    HashMap<Address,MinerData> minerDatas;
 
     /**
      * Node constructor creates node and begins server socket to accept connections
@@ -109,7 +109,7 @@ public class Node {
         localPeers = new ArrayList<>();
         mempool = new HashMap<>();
         accountsToAlert = new HashMap<>();
-                minerDatas = new ArrayList<>();
+        minerDatas = new HashMap<Address, MinerData>();
 
         /* Public-Private (DSA) Keys */
         KeyPair keys = generateDSAKeyPair();
@@ -158,9 +158,6 @@ public class Node {
     public void initializeBlockchain() {
         blockchain = new LinkedList<Block>();
 
-        
-
-
         if (USE.equals("Defi")) {
             accounts = new HashMap<>();
             // DefiTransaction genesisTransaction = new DefiTransaction("Bob", "Alice", 100,
@@ -174,8 +171,12 @@ public class Node {
         } else if (USE.equals("HC")) {
             addBlock(new HCBlock(new HashMap<String, Transaction>(), "000000", 0));
         } else if (USE.equals("PRISM")) {
+
+            for (Address address : globalPeers) {
+                repData.put(address, new RepData(0, 0, 0, 0));
+            }
             addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0)); // Creating a blank
-                                                                                                   // genesis block
+                                                                                       // genesis block
         }
     }
 
@@ -300,7 +301,7 @@ public class Node {
             Object[] validatorObjects = new Object[3];
 
             if (USE.equals("Defi")) {
-               // tv = new DefiTransactionValidator();
+                // tv = new DefiTransactionValidator();
 
                 validatorObjects[0] = transaction;
                 validatorObjects[1] = accounts;
@@ -442,23 +443,30 @@ public class Node {
     }
 
     public void delegateWork() {
-        synchronized(lock){
-            minerDatas = new ArrayList<>();
+        synchronized (lock) {
+            minerDatas = new HashMap<Address,MinerData>();
 
-            HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their counts.
-
+            HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
+                                                                    // counts.
+            System.out.println("I am quorum members delegating work");
             for (Address address : localPeers) {
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-                    // if my neighbour is a quorum member, returndoWork
 
+                    long startTime = System.currentTimeMillis();
+                    // if my neighbour is a quorum member, returndoWork
+                    System.out.println("send work to " + address.toString());
                     Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool),
                             myAddress);
                     String hash = null;
 
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
                         hash = Hashing.getSHAString((String) reply.getMetadata());
+                        minerDatas.get(address).setOutputHash(hash);
+                        System.out.println("got work back from  " + address.toString());
+                        long endTime = System.currentTimeMillis();
                         // Check if the hash is already in the map. If it is, increment its count.
                         // Otherwise, add it to the map with a count of 1.
+                        minerDatas.get(address).setTimestamp(endTime - startTime);
                         if (minerOutput.containsKey(hash)) {
                             minerOutput.put(hash, minerOutput.get(hash) + 1);
                         } else {
@@ -467,46 +475,54 @@ public class Node {
                     }
                 }
             }
-
+            
             String popularHash = "";
 
-            for(String hash : minerOutput.keySet()){
-                if(minerOutput.get(popularHash) == null) popularHash = hash;
+            for (String hash : minerOutput.keySet()) {
+                if (minerOutput.get(popularHash) == null)
+                    popularHash = hash;
 
-                if(minerOutput.get(hash) > minerOutput.get(popularHash)){
+                if (minerOutput.get(hash) > minerOutput.get(popularHash)) {
                     popularHash = hash;
                 }
             }
+            System.out.println("send message in quorum. hash:" + popularHash);
 
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
         }
     }
 
-    private ArrayList<String> quorumAnswerHashes;
+    private ArrayList<String> quorumAnswerHashes = new ArrayList<String>();
 
-    public void recieveAnswerHash(String hash){
-        synchronized(answerHashLock){
+    public void recieveAnswerHash(String hash) {
+
+        System.out.println("Message recieved in quorum. hash:" + hash);
+
+        synchronized (answerHashLock) {
+            System.out.println(myAddress + "added to quorumAnsHash---" + hash);
             quorumAnswerHashes.add(hash);
-
+            System.out.println("QuorumAnswerHashesSize: " + quorumAnswerHashes.size() + "QuorumSize"
+                    + deriveQuorum(blockchain.getLast(), 0).size());
             /* If we have all the answer hashes */
-            if(quorumAnswerHashes.size() == deriveQuorum(blockchain.getLast(), 0).size()){
+            if (quorumAnswerHashes.size() == deriveQuorum(blockchain.getLast(), 0).size() - 1) {
                 /* See which is most voted between Q member */
-                HashMap<String, Integer>hashVotes = new HashMap<>();
+                HashMap<String, Integer> hashVotes = new HashMap<>();
 
-                for(String hashAnswer : quorumAnswerHashes){
-                    if(hashVotes.get(hashAnswer) == null){
+                for (String hashAnswer : quorumAnswerHashes) {
+                    if (hashVotes.get(hashAnswer) == null) {
                         hashVotes.put(hashAnswer, 1);
-                    }else{
+                    } else {
                         hashVotes.put(hash, hashVotes.get(hash) + 1);
                     }
                 }
 
                 String popularHash = "";
 
-                for(String hashAnswer : hashVotes.keySet()){
-                    if(hashVotes.get(popularHash) == null) popularHash = hashAnswer;
+                for (String hashAnswer : hashVotes.keySet()) {
+                    if (hashVotes.get(popularHash) == null)
+                        popularHash = hashAnswer;
 
-                    if(hashVotes.get(hashAnswer) > hashVotes.get(popularHash)){
+                    if (hashVotes.get(hashAnswer) > hashVotes.get(popularHash)) {
                         popularHash = hashAnswer;
                     }
                 }
@@ -523,29 +539,30 @@ public class Node {
         }
     }
 
-
     public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
         PRISMTransaction PRISMtx = null;
-    
+
         for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
             // transaction per block) - maybe
             PRISMtx = (PRISMTransaction) txList.get(txHash);
         }
-    
-        // Percentage (from 0 to 1) that controls whether to use PRISMtx.getUID hash or a random hash
+
+        // Percentage (from 0 to 1) that controls whether to use PRISMtx.getUID hash or
+        // a random hash
         // example value, adjust as needed
-    
-        // Based on a percentage (0 to 1), this should set hash to the hash of PRISMtx.getUID. Otherwise, it returns a random hash
+
+        // Based on a percentage (0 to 1), this should set hash to the hash of
+        // PRISMtx.getUID. Otherwise, it returns a random hash
         String hash = null;
-        
+
         if (Math.random() < accuracyPercent && PRISMtx != null) {
             hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
         } else {
-            hash = "aaa"; // assuming you have a method to generate random hashes
+
         }
-    
+        hash = "aaa"; // assuming you have a method to generate random hashes
         // Do work
-    
+        System.out.println("I want told to do work ");
         try {
             oout.writeObject(new Message(Request.COMPLETED_WORK, hash));
             oout.flush();
@@ -555,12 +572,12 @@ public class Node {
         }
     }
 
-
     public void sendMempoolHashes() {
+        System.out.println("down bad");
         synchronized (memPoolLock) {
-            // Here
+            // Heresyso
+            System.out.println("Beetch");
             stateChangeRequest(2);
-
 
             if (DEBUG_LEVEL == 1)
                 System.out.println("Node " + myAddress.getPort() + ": sendMempoolHashes invoked");
@@ -675,15 +692,9 @@ public class Node {
             /* Make sure compiled transactions don't conflict */
             HashMap<String, Transaction> blockTransactions = new HashMap<>();
 
-            TransactionValidator tv = null;
-            if (USE.equals("Defi")) {
-                tv = new DefiTransactionValidator();
-            } else if (USE.equals("HC")) {
-                // Room to enable another use case
-                tv = new HCTransactionValidator();
-            } else if (USE.equals("PRISM")) {
-                tv = new PRISMTransactionValidator();
-            } 
+            PRISMTransactionValidator tv = null;
+
+            tv = new PRISMTransactionValidator();
 
             for (String key : mempool.keySet()) {
                 Transaction transaction = mempool.get(key);
@@ -697,7 +708,7 @@ public class Node {
                 } else if (USE.equals("PRISM")) {
                     validatorObjects[0] = transaction;
                 }
-                tv.validate(validatorObjects);
+                tv.validate(validatorObjects, repData);
                 blockTransactions.put(key, transaction);
             }
 
@@ -714,7 +725,9 @@ public class Node {
                             blockchain.size());
                 } else if (USE.equals("PRISM")) {
                     // How to do for multiple block types?
-
+                    quorumBlock = new PRISMBlock(blockTransactions,
+                            getBlockHash(blockchain.getLast(), 0),
+                            blockchain.size());
                 }
 
             } catch (NoSuchAlgorithmException e) {
@@ -1043,7 +1056,7 @@ public class Node {
                 }
             } else if (USE.equals("PRISM")) {
                 try {
-                    newBlock = new PRISMBlock(blockTransactions, 
+                    newBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
                             blockchain.size());
                 } catch (NoSuchAlgorithmException e) {
@@ -1096,7 +1109,7 @@ public class Node {
                 defiTxMap.put(key, transactionInList);
             }
 
-            DefiTransactionValidator.updateAccounts(defiTxMap, accounts);
+            // DefiTransactionValidator.updateAccounts(defiTxMap, accounts);
 
             synchronized (accountsLock) {
                 for (String account : accountsToAlert.keySet()) {
@@ -1171,16 +1184,18 @@ public class Node {
             Boolean quorumMember = false;
             for (Address quorumAddress : quorum) {
                 if (myAddress.equals(quorumAddress)) {
-                   quorumMember = true;
+                    quorumMember = true;
                 }
             }
             return quorumMember;
+
         }
     }
 
     public ArrayList<Address> deriveQuorum(Block block, int nonce) {
+        System.out.println("Deriving quorum for block " + block.getBlockId());
         String blockHash;
-        if (block != null && block.getPrevBlockHash() != null) {
+        if (block != null) {
             try {
                 ArrayList<Address> quorum = new ArrayList<>();
                 blockHash = Hashing.getBlockHash(block, nonce);
@@ -1190,10 +1205,57 @@ public class Node {
                 Random random = new Random(seed);
                 PRISMTransactionValidator tv = new PRISMTransactionValidator();
                 repData = tv.calculateReputationsData(block, repData);
-                if(repData == null){
-                    
-                        
-                }
+
+                // // Sort the repData map by currentReputation values in descending order
+                // LinkedHashMap<Address, RepData> sortedMap = repData.entrySet()
+                // .stream()
+                // .sorted(Map.Entry
+                // .<Address,
+                // RepData>comparingByValue(Comparator.comparing(RepData::getCurrentReputation))
+                // .reversed())
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
+
+                // // Calculate top 20% limit
+                // int topTwentyLimit = (int) Math.ceil(sortedMap.size() * 1);
+                // // Get the top 20% entries
+                // LinkedHashMap<Address, RepData> topTwentyPercent = sortedMap.entrySet()
+                // .stream()
+                // .limit(topTwentyLimit)
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
+
+                // // Convert map entries to a list
+                // List<Map.Entry<Address, RepData>> entries = new
+                // ArrayList<>(topTwentyPercent.entrySet());
+                // // Shuffle the list
+                // Collections.shuffle(entries, random);
+
+                // // Create a new LinkedHashMap and insert the shuffled entries
+                // LinkedHashMap<Address, RepData> shuffledMap = entries.stream()
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
+
+                // // Calculate top 5% limit
+                // int topFiveLimit = (int) Math.ceil(shuffledMap.size() * 0.5);
+                // // Get the top 5% entries
+                // LinkedHashMap<Address, RepData> topFivePercent = shuffledMap.entrySet()
+                // .stream()
+                // .limit(topFiveLimit)
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
                 // Sort the repData map by currentReputation values in descending order
                 LinkedHashMap<Address, RepData> sortedMap = repData.entrySet()
                         .stream()
@@ -1206,37 +1268,13 @@ public class Node {
                                 (e1, e2) -> e1,
                                 LinkedHashMap::new));
 
-                // Calculate top 20% limit
-                int topTwentyLimit = (int) Math.ceil(sortedMap.size() * 0.20);
-                // Get the top 20% entries
-                LinkedHashMap<Address, RepData> topTwentyPercent = sortedMap.entrySet()
+                // Calculate top 50% limit
+                int topFiftyLimit = (int) Math.ceil(sortedMap.size() * 0.5);
+
+                // Get the top 50% entries
+                LinkedHashMap<Address, RepData> topFiftyPercent = sortedMap.entrySet()
                         .stream()
-                        .limit(topTwentyLimit)
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                Map.Entry::getValue,
-                                (e1, e2) -> e1,
-                                LinkedHashMap::new));
-
-                // Convert map entries to a list
-                List<Map.Entry<Address, RepData>> entries = new ArrayList<>(topTwentyPercent.entrySet());
-                // Shuffle the list
-                Collections.shuffle(entries, random);
-
-                // Create a new LinkedHashMap and insert the shuffled entries
-                LinkedHashMap<Address, RepData> shuffledMap = entries.stream()
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                Map.Entry::getValue,
-                                (e1, e2) -> e1,
-                                LinkedHashMap::new));
-
-                // Calculate top 5% limit
-                int topFiveLimit = (int) Math.ceil(shuffledMap.size() * 0.05);
-                // Get the top 5% entries
-                LinkedHashMap<Address, RepData> topFivePercent = shuffledMap.entrySet()
-                        .stream()
-                        .limit(topFiveLimit)
+                        .limit(topFiftyLimit)
                         .collect(Collectors.toMap(
                                 Map.Entry::getKey,
                                 Map.Entry::getValue,
@@ -1244,9 +1282,10 @@ public class Node {
                                 LinkedHashMap::new));
 
                 // Add these to the quorum
-                quorum.addAll(topFivePercent.keySet());
+                quorum.addAll(topFiftyPercent.keySet());
 
                 return quorum;
+
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
@@ -1311,12 +1350,6 @@ public class Node {
             }
             while (true) {
 
-                if (repData.get(new Address(DEBUG_LEVEL, USE)) == null) {
-                    // rep is 0 / no history
-                } else {
-                    float rep = repData.get(new Address(DEBUG_LEVEL, USE)).getCurrentReputation();
-                }
-
                 for (Address address : localPeers) {
                     try {
                         Thread.sleep(10000);
@@ -1357,7 +1390,7 @@ public class Node {
     private int state;
     public final String USE;
 
-    public HashMap<Address, RepData> repData = new HashMap<>();
+    public HashMap<Address, RepData> repData = new HashMap<Address, RepData>();
     private float accuracyPercent; // value between 0 and 1 that determines how likely this node is to get a
                                    // correct answer as a miner.
 
