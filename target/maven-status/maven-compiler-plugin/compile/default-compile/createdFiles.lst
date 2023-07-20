@@ -43,10 +43,12 @@ node\blockchain\Block$BlockType.class
 client\PRISMClient.class
 node\blockchain\defi\Wallet$Acceptor.class
 node\blockchain\PRISM\RecordTypes\Record$RecordType.class
+node\blockchain\PRISM\SubWorkflow.class
 client\Client.class
 node\communication\messaging\Message$Request.class
 node\communication\ServerConnection$1.class
 node\blockchain\PRISM\PRISMBlock.class
+node\blockchain\PRISM\EnumSubWorkflow.class
 node\blockchain\BlockSkeleton.class
 node\communication\ServerConnection.class
 node\blockchain\defi\Wallet.class

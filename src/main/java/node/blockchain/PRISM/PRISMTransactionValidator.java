@@ -93,7 +93,7 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
     public float calculateReputation(RepData repData) {
         return (((alpha * repData.getAccurarySummation())
-                + (beta * repData.getTimeSummation()))
+                + (beta * repData.getTimeSummation())) 
                 + (gamma * ((float) repData.getAccuracyCount() / repData.blocksParticipated)))
                 / repData.blocksParticipated; // Calculate the reputation score and return it
     }
