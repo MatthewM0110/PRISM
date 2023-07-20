@@ -26,10 +26,10 @@ public class exampleSubsMain {
         SubWorkflow w1 = new SubWorkflow(w1Len, w1in, w1out);
         int testLength = w1Len - 1;
 
-        float[][] m1 = w1.compute((0), w1.getFirstInput(), (float).95);
-        float[][] m2 = w1.compute((1), w1.getFirstInput(), (float).95);
-        float[][] m3 = w1.compute((2), w1.getFirstInput(), (float).95);
-        float[][] m4 = w1.compute((3), w1.getFirstInput(), (float).95);
+        float[][] m1 = w1.compute((0), w1.getFirstInput(), (float).9);
+        float[][] m2 = w1.compute((1), w1.getFirstInput(), (float).9);
+        float[][] m3 = w1.compute((2), w1.getFirstInput(), (float).9);
+        float[][] m4 = w1.compute((3), w1.getFirstInput(), (float).9);
 
         System.out.println("___________________");
         for(float[] w : m1) {
@@ -58,7 +58,8 @@ public class exampleSubsMain {
         System.out.println("___________________");
 
         float[][][] miners = new float[][][]{m1, m2, m3, m4};
-        System.out.println(Arrays.toString(w1.compareMiners(miners)));
+        System.out.println("Individual confidences: " + Arrays.toString(w1.compareMiners(miners)));
+        System.out.println("Total Confidence: " + w1.overallConfidence(miners));
 
 
     }

@@ -481,8 +481,9 @@ public class Node {
             }
             int iterator = myWorkflow.getNumSteps();
 
-            HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
-                                                                    // counts.
+            /** Note by Skarlet - Changed object type as miners (aside from the last one) don't output the actual output.*/
+            float[][][] minerOutput = new float[myWorkflow.getNumSteps()][][];
+            
             System.out.println("I am quorum members delegating work");
             for (Address address : localPeers) {
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
@@ -491,23 +492,14 @@ public class Node {
                     long startTime = System.currentTimeMillis();
                     // if my neighbour is a quorum member, returndoWork
                     System.out.println("send work to " + address.toString());
-                    Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool),
+                    /** Skarlet replaced mempool in the line below with myWorkflow.subSubWorkflow(iterator) -- If only one transaction in mempool at a time this fine.*/
+                    Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, myWorkflow.subSubWorkflow(iterator)), 
                             myAddress);
                     String hash = null;
 
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
-                        hash = Hashing.getSHAString((String) reply.getMetadata());
-                        minerDatas.get(address).setOutputHash(hash);
-                        System.out.println("got work back from  " + address.toString());
-                        long endTime = System.currentTimeMillis();
-                        // Check if the hash is already in the map. If it is, increment its count.
-                        // Otherwise, add it to the map with a count of 1.
-                        minerDatas.get(address).setTimestamp(endTime - startTime);
-                        if (minerOutput.containsKey(hash)) {
-                            minerOutput.put(hash, minerOutput.get(hash) + 1);
-                        } else {
-                            minerOutput.put(hash, 1);
-                        }
+                        minerOutput[iterator] = (float[][])(reply.getMetadata());
+                        /** Skarlet removed a lot of code here because it assumed miners had same data */
                     }
                 }
                 if(iterator == 1){
@@ -517,15 +509,21 @@ public class Node {
             }
 
             String popularHash = "";
-
-            for (String hash : minerOutput.keySet()) {
-                if (minerOutput.get(popularHash) == null)
-                    popularHash = hash;
-
-                if (minerOutput.get(hash) > minerOutput.get(popularHash)) {
-                    popularHash = hash;
+            // Check if the last miner is the least reliable -> If so, call in another one. 
+            //TODO: Should we also do something like this if the second to last has the worst? Just a thought, since that's where it gets dicey
+            // I can also make it so that the formatting that I originally required for compareMiners() isn't necessary so any formatting can be used,
+            // allowing duplicates to ensure integrity. This will be hard though
+            int lastStep = myWorkflow.getNumSteps() - 1;
+            int iteratePeers = localPeers.size() - 1;
+            while (myWorkflow.isLastWorst(minerOutput)) {
+                Message reply = Messager.sendTwoWayMessage(localPeers.get(iteratePeers), new Message(Request.DELEGATE_WORK, myWorkflow.subSubWorkflow(lastStep)), myAddress);
+                if (reply.getRequest().name().equals("COMPLETED_WORK")) {
+                    float[][] newLast =  (float[][]) reply.getMetadata();
+                    minerOutput[lastStep] = newLast;
                 }
+                iteratePeers--;
             }
+            popularHash = Arrays.toString(minerOutput[lastStep][lastStep]);
             System.out.println("send message in quorum. hash:" + popularHash);
 
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
@@ -582,6 +580,7 @@ public class Node {
     public void doWork(SubWorkflow subWorkflow, ObjectInputStream oin, ObjectOutputStream oout) {
         PRISMTransaction PRISMtx = null;
 
+        //TODO: THIS Based on actual subworkflow stuff!
         // for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
         //     // transaction per block) - maybe
         //     PRISMtx = (PRISMTransaction) txList.get(txHash);

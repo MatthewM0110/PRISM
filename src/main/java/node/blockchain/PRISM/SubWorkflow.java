@@ -86,8 +86,7 @@ public class SubWorkflow {
         return numSteps;
     }
 
-    public boolean[] compareMiners(float[][][] minerOutputs) {
-
+    public float[] compareMiners(float[][][] minerOutputs) {
         //check for good formatting!
         for (int i = 0; i < minerOutputs.length; i++) {
             if (minerOutputs[i].length != i + 1){
@@ -99,9 +98,6 @@ public class SubWorkflow {
             }
         }
 
-        
-
-        //perfect case
         int numArrays = minerOutputs.length;
         int maxLength = 0;
         for (float[][] arr : minerOutputs) {
@@ -110,38 +106,99 @@ public class SubWorkflow {
             }
         }
 
-        boolean[] result = new boolean[maxLength];
-        Arrays.fill(result, true);
+        float[] confidenceLevels = new float[numArrays];
+        //For every array in the miners answers
+        for (int j = 0; j < numArrays; j++) {
+            float[] minerAnswer = minerOutputs[j][j]; 
 
-        for (int j = 0; j < maxLength; j++) {
-            float[][] elements = new float[numArrays][];
-            int counter = 0;
-            for (int k = 0; k < numArrays; k++) {
-                if (j < minerOutputs[k].length) {
-                    elements[counter] = minerOutputs[k][j];
-                    counter++;
+            int count = 0;
+            int numCommon = 0;
+            //For every array of greater length
+            for (int i = numArrays-1; i >= j; i--) {
+                if (minerOutputs[i][j].equals(minerAnswer)) {
+                    numCommon ++;
                 }
+                count++;
             }
+            //Add proportional confidence for your unique answer
+            confidenceLevels[j] = ((float)numCommon/count)/(j+1);
 
-            if (counter > 1 && !areMatching(elements, counter)) {
-                result[j] = false;
+            //add proportional confidence for matching other answers.
+            int smallercount = 0;
+            int smallernumCommon = 0;
+            int countdown = j-1;
+            while (countdown >=0) {
+                for(int k = j-1; k >= 0; k--) {
+                    if(countdown <= k) {
+                        if (minerOutputs[j][countdown].equals(minerOutputs[k][countdown])) {
+                            smallernumCommon ++;
+                        }  
+                        smallercount++;
+                    }
+                }
+                for (int k = numArrays - 1; k > j; k--) {
+                    if(countdown <= k) {
+                        if (minerOutputs[j][countdown].equals(minerOutputs[k][countdown])) {
+                            smallernumCommon ++;
+                        }  
+                        smallercount++;
+                    }
+                }
+                confidenceLevels[j] += ((float)(smallernumCommon+1)/(smallercount+1))/(j+1); 
+                smallercount = 0;
+                smallernumCommon = 0;
+                
+                countdown--;
             }
         }
 
-        return result;
+        return confidenceLevels;
     }
 
-    private static boolean areMatching(float[][] elements, int length) {
-        for (int i = 0; i < length - 1; i++) {
-            if (elements[i].length != elements[i + 1].length) {
-                return false; // Check if the array lengths match
+    /** Returns the index of the miner with the worst confidence.
+     *  Returns -1 only if all miners have confidence of 100%
+     */
+    public int findWorst(float[][][] minerOutputs){
+        float[] confidence = compareMiners(minerOutputs);
+        float minConfidence = 1;
+        int iterator = 0;
+        int minConfidenceSpot = -1;
+        for (float c : confidence) {
+            if (c < minConfidence) {
+                minConfidence = c;
+                minConfidenceSpot = iterator;
             }
-            for (int k = 0; k < elements[i].length; k++) {
-                if (elements[i][k] != elements[i + 1][k]) {
-                    return false; // Check if the values match
-                }
-            }
+            iterator++;
         }
-        return true;
+        return minConfidenceSpot;
+    }
+
+    /** Returns true if the last miner has the worst confidence. Otherwise, returns false.
+     * Note: returns false if all confidence of 100%. */
+    public boolean isLastWorst(float[][][] minerOutputs){
+        float[] confidence = compareMiners(minerOutputs);
+        float minConfidence = 1;
+        int iterator = 0;
+        int minConfidenceSpot = -1;
+        for (float c : confidence) {
+            if (c < minConfidence) {
+                minConfidence = c;
+                minConfidenceSpot = iterator;
+            }
+            iterator++;
+        }
+        if (confidence[confidence.length - 1] == minConfidence && minConfidenceSpot != -1) {
+            return true;
+        }
+        return false;
+    }
+
+    public float overallConfidence(float[][][] minerOutputs){
+        float[] confidence = compareMiners(minerOutputs);
+        float sum = 0;
+        for (float c : confidence) {
+            sum += c;
+        }
+        return sum / numSteps;
     }
 }
