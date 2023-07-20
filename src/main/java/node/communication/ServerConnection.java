@@ -4,6 +4,7 @@ import node.Node;
 import node.blockchain.Block;
 import node.blockchain.BlockSkeleton;
 import node.blockchain.Transaction;
+import node.blockchain.PRISM.SubWorkflow;
 import node.blockchain.defi.DefiTransaction;
 import node.communication.*;
 import node.communication.messaging.Message;
@@ -99,8 +100,10 @@ public class ServerConnection extends Thread {
                 node.alertWallet((String) data[0], (Address) data[1]);
                 break;
             case DELEGATE_WORK:
-                HashMap<String,Transaction> mempool = (HashMap<String,Transaction>) incomingMessage.getMetadata();
-                node.doWork(mempool, oin, oout);
+                //When delegate_work is called, a hashmap is NOT what is passed through, it is the subworkflow
+                //HashMap<String,Transaction> mempool = (HashMap<String,Transaction>) incomingMessage.getMetadata();
+                SubWorkflow work = (SubWorkflow) incomingMessage.getMetadata();
+                node.doWork(work, oin, oout);
                 break;
             case COMPLETED_WORK:
                 

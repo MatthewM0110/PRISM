@@ -464,7 +464,7 @@ public class Node {
             if (deriveQuorum(blockchain.getLast(), 0).contains(address)) {
                 return; // if my neighbour is a quorum member, return
             }
-            //TODO: do something with the mempool - I replaced mempool with myworkflow
+            //TODO: do something with the mempool - I replaced mempool with myworkflow (Probably what ya'll did yesterday where you select the task from the mempool :) )
 
             Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, myWorkflow.subSubWorkflow(iterator)), myAddress);
             String hash = null;
@@ -473,7 +473,7 @@ public class Node {
                 hash = Hashing.getSHAString((String) reply.getMetadata());
             }
 
-            // TODO: Do something with the hash
+            // TODO: Do something with the hash -- again probably you all did this yesterday
             if(myWorkflow.getNumSteps() == iterator) {
                 break;
             }
@@ -482,17 +482,21 @@ public class Node {
 
     }
 
-    public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
-        PRISMTransaction PRISMtx;
-        for (String txHash : txList.keySet()) { // For each transaction in that block
-            PRISMtx = (PRISMTransaction) txList.get(txHash);
+    //Not a hashmap, a subworkflow
+    //public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
+    public void doWork(SubWorkflow workflow, ObjectInputStream oin, ObjectOutputStream oout) {
+        /**  Do we still need this? If yes, we can also pass in the transaction, probably. */
+        // PRISMTransaction PRISMtx;
+        // for (String txHash : txList.keySet()) { // For each transaction in that block
+        //     PRISMtx = (PRISMTransaction) txList.get(txHash);
 
-        }
+        // }
+
         // Do work 
-        // MinerData(Address address, long timestamp, int accuracy, String outputHash)
-        // TODO: Finish this! Maybe with hashCode() ???
-        // MinerData myData = new MinerData(myAddress, ?, ?, ?);
+        float[][] output = workflow.compute(workflow.getNumSteps(), workflow.getFirstInput(), (float).95);
 
+        //TODO: must return miner output to the quorum
+        // MinerData myData = new MinerData(myAddress, ?, ?, ?); // <- does quorum do this?
     }
 
     public void sendMempoolHashes() {
