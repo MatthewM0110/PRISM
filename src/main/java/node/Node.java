@@ -295,6 +295,7 @@ public class Node {
 
             clonedBlockchain.addAll(blockchain);
             for (Block block : clonedBlockchain) {
+                System.out.println("Node " + myAddress.getPort() + ": verifyTransaction: " + transaction.getUID());
                 if (block.getTxList().containsKey(getSHAString(transaction.getUID()))) {
                     // We have this transaction in a block
                     if (DEBUG_LEVEL == 1) {
@@ -544,8 +545,23 @@ public class Node {
                 pr.setAnswerHash(popularHash);
                 System.out.println("Node " + myAddress.getPort() + ": about to send mempool");
                 quorumAnswerHashes = new ArrayList<>();
-                sendMempoolHashes();
+
+
+                sendMinerData();
             }
+        }
+    }
+
+    public void sendMinerData(){
+
+
+    }
+
+    public void receiveMinerData(MinerData md){
+        synchronized(new Object()){
+            // Do something with mier datas
+            // Now we have a consistent miner datas
+            sendMempoolHashes();
         }
     }
 
@@ -923,7 +939,7 @@ public class Node {
                 }
                 skeleton = new BlockSkeleton(quorumBlock.getBlockId(),
                         new ArrayList<String>(quorumBlock.getTxList().keySet()), quorumSigs,
-                        getBlockHash(quorumBlock, 0));
+                        getBlockHash(quorumBlock, 0)); // Add miner data
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
@@ -1066,7 +1082,7 @@ public class Node {
                 try {
                     newBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size(), minerDatas);
+                            blockchain.size(), minerDatas); // Miner data comes from skelton not global (skeleton.getMinderDatas())
                 } catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException(e);
                 }
@@ -1107,7 +1123,8 @@ public class Node {
             block.setMerkleRootHash(mt.getRootNode().getHash());
 
         blockchain.add(block);
-        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values());
+        PRISMBlock pBlock = (PRISMBlock) block;
+        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values() + " minerDatas: " + pBlock.getMinerData().keySet());
 
         if (USE.equals("Defi")) {
             HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();
