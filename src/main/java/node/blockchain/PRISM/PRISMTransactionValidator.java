@@ -15,120 +15,99 @@ import node.communication.Address;
 
 public class PRISMTransactionValidator extends TransactionValidator {
 
-    public HashMap<Address, Float> calculateReputations(LinkedList<Block> blockchain, ArrayList<Address> globalPeers,
-            float alpha, float beta, float gamma) {
+    private float alpha = 1;
+    private float beta = 1;
+    private float gamma = 1;
 
-        HashMap<Address, Float> reputations = new HashMap<>();
-        for (Address address : globalPeers) { // FOR EVERY ADDRESS
-            int blocksParticipated = 0;
-            float accuracy = 0.0f;
-            float time = 0.0f;
-            int accuracyCount = 0;
-
-            for (Block block : blockchain) { // For each block
-                if (block instanceof WorkflowTaskBlock) { // If that block is a WTB TODO: reputation should still be used by nodes for other blocks, but this isn't that important if you only have one workflow
-                    for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
-                        Float myTime = 0f;
-                        PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize
-                                                                                                     // PRISMTransaction
-                        if (PRISMtx.getRecord() instanceof ProvenanceRecord) { // If that PRISMtx contains a
-                                                                               // ProvenanceRecord (which is should
-                                                                               // since its a WorkFlowTaskBlock)
-                            ProvenanceRecord pr = (ProvenanceRecord) PRISMtx.getRecord();
-                            for (MinerData minerData : pr.getMinerData()) { // Get the miner data in that
-                                                                            // provenanceRecord
-                                if (minerData.getAddress() == address) {
-                                    blocksParticipated++; // For Phi
-                                    accuracy += minerData.getAccuracy(); // Summation of A
-                                    if (accuracy == 1)
-                                        accuracyCount++;
-                                    myTime += minerData.getTimestamp(); // Summation of T
-                                }
-
-                            }
-                            time = myTime - pr.getMinimumCorrectTime();
-                        }
-
-                    }
-                }
-
-            }
-            if (blocksParticipated > 0) {
-                float rep = (((alpha * accuracy) + (beta * time))
-                        + (gamma * ((float) accuracyCount / blocksParticipated)))
-                        / blocksParticipated;
-                reputations.put(address, rep);
-            }
+    /**
+     * Called everytime a block is added
+     * 
+     * @param repData
+     * @param globalPeers
+     * @param alpha
+     * @param beta
+     * @param gamma
+     * @return
+     */
+    public HashMap<Address, RepData> calculateReputationsData(Block block, HashMap<Address, RepData> repData) {
+   
+        PRISMBlock pBlock = (PRISMBlock) block;
+        float minimumTime = Float.MAX_VALUE;
+        for (Address address : pBlock.getMinerData().keySet()) {
+            minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
-        return reputations;
+        for (Address address : pBlock.getMinerData().keySet()) { // Get the miner data in that P rovenanceRecord
+            System.out.println(address.toString()); 
+            RepData rData = repData.get(address);
+            MinerData mData = pBlock.getMinerData().get(address);
+            rData.addBlocksParticipated();
+            if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
+                rData.addAccuracySummation(1);
+                rData.addAccuracyCount();
+            } else {
+                rData.addAccuracySummation(-1);
+            }
 
+            rData.addTimeSummation(minimumTime - mData.getTimestamp());
+
+            rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
+                                                                    // reputation
+            repData.put(address, rData); // Update the reputation data for the miner
+        }
+
+        return repData; // Return the modified reputation data
     }
-
-    public Float calculateReputation(Address address, LinkedList<Block> blockchain, float alpha, float beta,
-            float gamma) {
-
-        int blocksParticipated = 0;
-        float accuracy = 0.0f;
-        float time = 0.0f;
-        int accuracyCount = 0;
-
-        for (Block block : blockchain) { // For each block
-            if (block instanceof WorkflowTaskBlock) { // If that block is a WTB
-                for (String txHash : block.getTxList().keySet()) { // For each transaction in that block
-                    Float myTime = 0f;
-                    PRISMTransaction PRISMtx = (PRISMTransaction) block.getTxList().get(txHash); // Initialize
-                                                                                                 // PRISMTransaction
-                    if (PRISMtx.getRecord() instanceof ProvenanceRecord) { // If that PRISMtx contains a
-                                                                           // ProvenanceRecord (which is should
-                                                                           // since its a WorkFlowTaskBlock)
-                        ProvenanceRecord pr = (ProvenanceRecord) PRISMtx.getRecord();
-                        for (MinerData minerData : pr.getMinerData()) { // Get the miner data in that
-                                                                        // provenanceRecord
-                            if (minerData.getAddress() == address) {
-                                blocksParticipated++; // For Phi
-                                accuracy += minerData.getAccuracy(); // Summation of A
-                                if (accuracy == 1)
-                                    accuracyCount++;
-                                myTime += minerData.getTimestamp(); // Summation of T
-                            }
-
-                        }
-                        time = myTime - pr.getMinimumCorrectTime();
-                    }
-
-                }
-            }
-
-        }
-        if (blocksParticipated > 0) {
-            float rep = (((alpha * accuracy) + (beta * time)) + (gamma * ((float) accuracyCount / blocksParticipated)))
-                    / blocksParticipated;
-            return rep;
-        }
-        return 0f;
-    }
-
+    public RepData calculateReputationData(Block block, Address targetAddress, HashMap<Address, RepData> repData) {
+        PRISMBlock pBlock = (PRISMBlock) block;
+        float minimumTime = Float.MAX_VALUE;
     
-    public boolean validate(Object[] objects, LinkedList<Block> blockchain) {
+        // calculate minimum time
+        for (Address address : pBlock.getMinerData().keySet()) {
+            minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
+        }
+    
+        // Check if the targetAddress is present in the minerData
+        if(pBlock.getMinerData().containsKey(targetAddress)) {
+            RepData rData = repData.get(targetAddress);
+            MinerData mData = pBlock.getMinerData().get(targetAddress);
+    
+            rData.addBlocksParticipated();
+    
+            if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
+                rData.addAccuracySummation(1);
+                rData.addAccuracyCount();
+            } else {
+                rData.addAccuracySummation(-1);
+            }
+    
+            rData.addTimeSummation(minimumTime - mData.getTimestamp());
+    
+            rData.setCurrentReputation(calculateReputation(rData)); // Calculate current reputation
+    
+            repData.put(targetAddress, rData); // Update the reputation data for the targetAddress
+        }
+    
+        return repData.get(targetAddress); // Return the modified reputation data for targetAddress
+    }
+    
+
+    public float calculateReputation(RepData repData) {
+        return (((alpha * repData.getAccurarySummation())
+                + (beta * repData.getTimeSummation())) 
+                + (gamma * ((float) repData.getAccuracyCount() / repData.blocksParticipated)))
+                / repData.blocksParticipated; // Calculate the reputation score and return it
+    }
+
+    public boolean validate(Object[] objects, HashMap<Address, RepData> repData) {
         // TODO Auto-generated method stub
         // Here we can check what the RecordType is and validate it this way.
         PRISMTransaction transaction = (PRISMTransaction) objects[0];
         if (transaction.getRecord().getRecordType().equals(RecordType.ProvenanceRecord)) {
-            return true;// Eventually, we want to check if a node has enough of a reputation to propose
-                        // a transaction.
-        } else if (transaction.getRecord().getRecordType().equals(RecordType.Project)) {
-            Project project = (Project) transaction.getRecord();
 
-            if (calculateReputation(project.getAuthors()[0], blockchain, 0, 0, 0) > 0.75) {
-                return true; // Same is true here
-            }
-
-            return false;
-
+            return true;
         }
 
         return false;
-
     }
 
     @Override
@@ -138,3 +117,13 @@ public class PRISMTransactionValidator extends TransactionValidator {
     }
 
 }
+
+/*
+ * for(MinerData md : minerData){
+ * Float minTime = Float.MAX_VALUE;
+ * if(md.getAccuracy() == 1 && md.getTimestamp() < minTime){
+ * this.minimumCorrectTime = minTime;
+ * }
+ * 
+ * }
+ */

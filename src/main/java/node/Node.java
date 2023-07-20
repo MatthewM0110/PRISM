@@ -3,10 +3,15 @@ package node;
 import node.blockchain.*;
 import node.blockchain.PRISM.EnumSubWorkflow;
 import node.blockchain.PRISM.MinerData;
+import node.blockchain.PRISM.EnumSubWorkflow;
+import node.blockchain.PRISM.MinerData;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
 import node.blockchain.PRISM.SubWorkflow;
-import node.blockchain.PRISM.WorkflowInceptionBlock;
+import node.blockchain.PRISM.RepData;
+import node.blockchain.PRISM.SubWorkflow;
+import node.blockchain.PRISM.PRISMBlock;
+import node.blockchain.PRISM.RecordTypes.ProvenanceRecord;
 import node.blockchain.healthcare.*;
 import node.blockchain.defi.DefiBlock;
 import node.blockchain.defi.DefiTransaction;
@@ -56,6 +61,8 @@ import static node.communication.utils.Utils.*;
  */
 public class Node {
 
+    HashMap<Address, MinerData> minerDatas;
+
     /**
      * Node constructor creates node and begins server socket to accept connections
      *
@@ -85,6 +92,7 @@ public class Node {
         accountsLock = new Object();
         memPoolLock = new Object();
         blockLock = new Object();
+        answerHashLock = new Object();
 
         /* Multithreaded Counters for Stateful Servant */
         memPoolRounds = 0;
@@ -106,6 +114,7 @@ public class Node {
         localPeers = new ArrayList<>();
         mempool = new HashMap<>();
         accountsToAlert = new HashMap<>();
+        minerDatas = new HashMap<Address, MinerData>();
 
         /* Public-Private (DSA) Keys */
         KeyPair keys = generateDSAKeyPair();
@@ -167,8 +176,17 @@ public class Node {
         } else if (USE.equals("HC")) {
             addBlock(new HCBlock(new HashMap<String, Transaction>(), "000000", 0));
         } else if (USE.equals("PRISM")) {
-            addBlock(new WorkflowInceptionBlock(new HashMap<String, Transaction>(), "000000", 0)); // Creating a blank
-                                                                                                   // genesis block
+
+            for (Address address : globalPeers) {
+                repData.put(address, new RepData());
+
+            }
+            for (Address address : repData.keySet()) {
+                System.out.println(repData.get(address).toString());
+
+            }
+            addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0, minerDatas)); // Creating a blank
+            // genesis block
         }
     }
 
@@ -289,11 +307,11 @@ public class Node {
                 }
             }
 
-            TransactionValidator tv;
+            PRISMTransactionValidator tv = null;
             Object[] validatorObjects = new Object[3];
 
             if (USE.equals("Defi")) {
-                tv = new DefiTransactionValidator();
+                // tv = new DefiTransactionValidator();
 
                 validatorObjects[0] = transaction;
                 validatorObjects[1] = accounts;
@@ -307,10 +325,10 @@ public class Node {
                 validatorObjects[0] = transaction;
 
             } else {
-                tv = new HCTransactionValidator(); // To be changed to another use case in the future
+                tv = new PRISMTransactionValidator(); // To be changed to another use case in the future
             }
 
-            if (!tv.validate(validatorObjects)) {
+            if (!tv.validate(validatorObjects, repData)) {
                 if (DEBUG_LEVEL == 1) {
                     System.out.println("Node " + myAddress.getPort() + "Transaction not valid");
                 }
@@ -418,7 +436,8 @@ public class Node {
                     quorumReadyVotes++;
                     if (quorumReadyVotes == quorum.size() - 1) {
                         quorumReadyVotes = 0;
-                        sendMempoolHashes();
+                        delegateWork();
+
                     }
 
                 }
@@ -434,76 +453,170 @@ public class Node {
     }
 
     public void delegateWork() {
-        Random rand = new Random();
-        int myPick = rand.nextInt(10);
-        SubWorkflow myWorkflow;
-        if (myPick == 0) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_0.getSubWorkflow(); 
-        } else if (myPick == 1) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_1.getSubWorkflow(); 
-        } else if (myPick == 2) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_2.getSubWorkflow(); 
-        } else if (myPick == 3) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_3.getSubWorkflow(); 
-        } else if (myPick == 4) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_4.getSubWorkflow(); 
-        } else if (myPick == 5) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_5.getSubWorkflow(); 
-        } else if (myPick == 6) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_6.getSubWorkflow(); 
-        } else if (myPick == 7) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_7.getSubWorkflow(); 
-        } else if (myPick == 8) {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_8.getSubWorkflow(); 
-        } else {
-            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_9.getSubWorkflow(); 
-        } 
-        int iterator = 1;
-
-        for (Address address : localPeers) {
-            if (deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-                return; // if my neighbour is a quorum member, return
+        synchronized (lock) {
+            minerDatas = new HashMap<Address, MinerData>();
+            Random rand = new Random();
+            int myPick = rand.nextInt(10);
+            SubWorkflow myWorkflow;
+            if (myPick == 0) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_0.getSubWorkflow();
+            } else if (myPick == 1) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_1.getSubWorkflow();
+            } else if (myPick == 2) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_2.getSubWorkflow();
+            } else if (myPick == 3) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_3.getSubWorkflow();
+            } else if (myPick == 4) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_4.getSubWorkflow();
+            } else if (myPick == 5) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_5.getSubWorkflow();
+            } else if (myPick == 6) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_6.getSubWorkflow();
+            } else if (myPick == 7) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_7.getSubWorkflow();
+            } else if (myPick == 8) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_8.getSubWorkflow();
+            } else {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_9.getSubWorkflow();
             }
-            //TODO: do something with the mempool - I replaced mempool with myworkflow (Probably what ya'll did yesterday where you select the task from the mempool :) )
+            int iterator = myWorkflow.getNumSteps();
 
-            Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, myWorkflow.subSubWorkflow(iterator)), myAddress);
-            String hash = null;
+            HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
+                                                                    // counts.
+            System.out.println("I am quorum members delegating work");
+            for (Address address : localPeers) {
+                if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
 
-            if (reply.getRequest().name().equals("COMPLETED_WORK")) {
-                hash = Hashing.getSHAString((String) reply.getMetadata());
+                    minerDatas.put(address, new MinerData(address, 0, "0"));
+                    long startTime = System.currentTimeMillis();
+                    // if my neighbour is a quorum member, returndoWork
+                    System.out.println("send work to " + address.toString());
+                    Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool),
+                            myAddress);
+                    String hash = null;
+
+                    if (reply.getRequest().name().equals("COMPLETED_WORK")) {
+                        hash = Hashing.getSHAString((String) reply.getMetadata());
+                        minerDatas.get(address).setOutputHash(hash);
+                        System.out.println("got work back from  " + address.toString());
+                        long endTime = System.currentTimeMillis();
+                        // Check if the hash is already in the map. If it is, increment its count.
+                        // Otherwise, add it to the map with a count of 1.
+                        minerDatas.get(address).setTimestamp(endTime - startTime);
+                        if (minerOutput.containsKey(hash)) {
+                            minerOutput.put(hash, minerOutput.get(hash) + 1);
+                        } else {
+                            minerOutput.put(hash, 1);
+                        }
+                    }
+                }
+                if(iterator == 1){
+                    break; //should we break here?
+                }
+                iterator--;
             }
 
-            // TODO: Do something with the hash -- again probably you all did this yesterday
-            if(myWorkflow.getNumSteps() == iterator) {
-                break;
+            String popularHash = "";
+
+            for (String hash : minerOutput.keySet()) {
+                if (minerOutput.get(popularHash) == null)
+                    popularHash = hash;
+
+                if (minerOutput.get(hash) > minerOutput.get(popularHash)) {
+                    popularHash = hash;
+                }
             }
-            iterator++;
+            System.out.println("send message in quorum. hash:" + popularHash);
+
+            sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
         }
-
     }
 
-    //Not a hashmap, a subworkflow
-    //public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
-    public void doWork(SubWorkflow workflow, ObjectInputStream oin, ObjectOutputStream oout) {
-        /**  Do we still need this? If yes, we can also pass in the transaction, probably. */
-        // PRISMTransaction PRISMtx;
-        // for (String txHash : txList.keySet()) { // For each transaction in that block
-        //     PRISMtx = (PRISMTransaction) txList.get(txHash);
+    private ArrayList<String> quorumAnswerHashes = new ArrayList<String>();
 
-        // }
+    public void recieveAnswerHash(String hash) {
 
-        // Do work 
-        float[][] output = workflow.compute(workflow.getNumSteps(), workflow.getFirstInput(), (float).95);
+        System.out.println("Message recieved in quorum. hash:" + hash);
 
-        //TODO: must return miner output to the quorum
-        // MinerData myData = new MinerData(myAddress, ?, ?, ?); // <- does quorum do this?
+        synchronized (answerHashLock) {
+            System.out.println(myAddress + "added to quorumAnsHash---" + hash);
+            quorumAnswerHashes.add(hash);
+            System.out.println("QuorumAnswerHashesSize: " + quorumAnswerHashes.size() + "QuorumSize"
+                    + deriveQuorum(blockchain.getLast(), 0).size());
+            /* If we have all the answer hashes */
+            if (quorumAnswerHashes.size() == deriveQuorum(blockchain.getLast(), 0).size() - 1) {
+                /* See which is most voted between Q member */
+                HashMap<String, Integer> hashVotes = new HashMap<>();
+
+                for (String hashAnswer : quorumAnswerHashes) {
+                    if (hashVotes.get(hashAnswer) == null) {
+                        hashVotes.put(hashAnswer, 1);
+                    } else {
+                        hashVotes.put(hash, hashVotes.get(hash) + 1);
+                    }
+                }
+
+                String popularHash = "";
+
+                for (String hashAnswer : hashVotes.keySet()) {
+                    if (hashVotes.get(popularHash) == null)
+                        popularHash = hashAnswer;
+
+                    if (hashVotes.get(hashAnswer) > hashVotes.get(popularHash)) {
+                        popularHash = hashAnswer;
+                    }
+                }
+                HashSet<String> keys = new HashSet<String>(mempool.keySet());
+                PRISMTransaction prismTransaction = null;
+                for (String key : keys) {
+                    prismTransaction = (PRISMTransaction) mempool.get(key); // ASSUMING 1 TX
+                }
+
+                ProvenanceRecord pr = (ProvenanceRecord) prismTransaction.getRecord();
+                pr.setAnswerHash(popularHash);
+                sendMempoolHashes();
+            }
+        }
+    }
+
+    public void doWork(SubWorkflow subWorkflow, ObjectInputStream oin, ObjectOutputStream oout) {
+        PRISMTransaction PRISMtx = null;
+
+        for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
+            // transaction per block) - maybe
+            PRISMtx = (PRISMTransaction) txList.get(txHash);
+        }
+
+        // Percentage (from 0 to 1) that controls whether to use PRISMtx.getUID hash or
+        // a random hash
+        // example value, adjust as needed
+
+        // Based on a percentage (0 to 1), this should set hash to the hash of
+        // PRISMtx.getUID. Otherwise, it returns a random hash
+        String hash = null;
+
+        if (Math.random() < accuracyPercent && PRISMtx != null) {
+            hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
+        } else {
+
+        }
+        hash = "aaa"; // assuming you have a method to generate random hashes
+        // Do work
+        System.out.println("I want told to do work ");
+        try {
+            oout.writeObject(new Message(Request.COMPLETED_WORK, hash));
+            oout.flush();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     public void sendMempoolHashes() {
+        System.out.println("down bad");
         synchronized (memPoolLock) {
-
-            // Here
-
+            // Heresyso
+            System.out.println("Beetch");
             stateChangeRequest(2);
 
             if (DEBUG_LEVEL == 1)
@@ -619,17 +732,9 @@ public class Node {
             /* Make sure compiled transactions don't conflict */
             HashMap<String, Transaction> blockTransactions = new HashMap<>();
 
-            TransactionValidator tv;
-            if (USE.equals("Defi")) {
-                tv = new DefiTransactionValidator();
-            } else if (USE.equals("HC")) {
-                // Room to enable another use case
-                tv = new HCTransactionValidator();
-            } else if (USE.equals("PRISM")) {
-                tv = new PRISMTransactionValidator();
-            } else {
-                tv = new DefiTransactionValidator();
-            }
+            PRISMTransactionValidator tv = null;
+
+            tv = new PRISMTransactionValidator();
 
             for (String key : mempool.keySet()) {
                 Transaction transaction = mempool.get(key);
@@ -643,7 +748,7 @@ public class Node {
                 } else if (USE.equals("PRISM")) {
                     validatorObjects[0] = transaction;
                 }
-                tv.validate(validatorObjects);
+                tv.validate(validatorObjects, repData);
                 blockTransactions.put(key, transaction);
             }
 
@@ -660,7 +765,9 @@ public class Node {
                             blockchain.size());
                 } else if (USE.equals("PRISM")) {
                     // How to do for multiple block types?
-
+                    quorumBlock = new PRISMBlock(blockTransactions,
+                            getBlockHash(blockchain.getLast(), 0),
+                            blockchain.size(), minerDatas);
                 }
 
             } catch (NoSuchAlgorithmException e) {
@@ -989,10 +1096,9 @@ public class Node {
                 }
             } else if (USE.equals("PRISM")) {
                 try {
-                    newBlock = new WorkflowInceptionBlock(blockTransactions, // Again, how to do for multiple block
-                                                                             // types?
+                    newBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size());
+                            blockchain.size(), minerDatas);
                 } catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException(e);
                 }
@@ -1034,6 +1140,9 @@ public class Node {
 
         blockchain.add(block);
         System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values());
+        for (Address address : repData.keySet()) {
+            System.out.println(repData.get(address).getCurrentReputation());
+        }
 
         if (USE.equals("Defi")) {
             HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();
@@ -1043,7 +1152,7 @@ public class Node {
                 defiTxMap.put(key, transactionInList);
             }
 
-            DefiTransactionValidator.updateAccounts(defiTxMap, accounts);
+            // DefiTransactionValidator.updateAccounts(defiTxMap, accounts);
 
             synchronized (accountsLock) {
                 for (String account : accountsToAlert.keySet()) {
@@ -1061,6 +1170,11 @@ public class Node {
                     }
                 }
             }
+        } else {
+            // PRISM
+            PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
+
+            repData = txValidator.calculateReputationsData(block, repData);
         }
 
         ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
@@ -1117,60 +1231,104 @@ public class Node {
                 }
             }
             return quorumMember;
+
         }
     }
 
-    public ArrayList<Address> deriveQuorum(Block block, int nonce) { // PRISM, This needs modified to derive a
-                                                                     // percentage of the quroum based off of
-                                                                     // reputation.
+    public ArrayList<Address> deriveQuorum(Block block, int nonce) {
+        System.out.println("Deriving quorum for block " + block.getBlockId());
         String blockHash;
-        if (block != null && block.getPrevBlockHash() != null) {
+        if (block != null) {
             try {
-                ArrayList<Address> quorum = new ArrayList<>(); // New list for returning a quorum, list of addr
-                blockHash = Hashing.getBlockHash(block, nonce); // gets the hash of the block
-                BigInteger bigInt = new BigInteger(blockHash, 16); // Converts the hex hash in to a big Int
-                bigInt = bigInt.mod(BigInteger.valueOf(NUM_NODES)); // we mod the big int I guess
-                int seed = bigInt.intValue(); // This makes our seed
-                Random random = new Random(seed); // Makes our random in theory the same across all healthy nodes
-                int quorumNodeIndex; // The index from our global peers from which we select nodes to participate in
-                                     // next quorum
-                Address quorumNode; // The address of thenode from the quorumNode Index to go in to the quorum
-                // System.out.println("Node " + myAddress.getPort() + ": blockhash" +
-                // chainString(blockchain));
+                ArrayList<Address> quorum = new ArrayList<>();
+                blockHash = Hashing.getBlockHash(block, nonce);
+                BigInteger bigInt = new BigInteger(blockHash, 16);
+                bigInt = bigInt.mod(BigInteger.valueOf(NUM_NODES));
+                int seed = bigInt.intValue();
+                Random random = new Random(seed);
                 PRISMTransactionValidator tv = new PRISMTransactionValidator();
+                repData = tv.calculateReputationsData(block, repData);
 
-                HashMap<Address, Float> potentialQuorumMembers = tv.calculateReputations(blockchain, quorum, 1, 1, 1);
-                int numToKeep = (int) Math.ceil(potentialQuorumMembers.size() * 0.20); // replace 0.20 with your desired
-                                                                                       // percentage
+                // // Sort the repData map by currentReputation values in descending order
+                // LinkedHashMap<Address, RepData> sortedMap = repData.entrySet()
+                // .stream()
+                // .sorted(Map.Entry
+                // .<Address,
+                // RepData>comparingByValue(Comparator.comparing(RepData::getCurrentReputation))
+                // .reversed())
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
 
-                // Create a new linked hash map and sort the potentialQuorumMembers map by
-                // values in descending order,
-                // and limit the map to the top x percent
-                LinkedHashMap<Address, Float> sortedMap = potentialQuorumMembers.entrySet()
+                // // Calculate top 20% limit
+                // int topTwentyLimit = (int) Math.ceil(sortedMap.size() * 1);
+                // // Get the top 20% entries
+                // LinkedHashMap<Address, RepData> topTwentyPercent = sortedMap.entrySet()
+                // .stream()
+                // .limit(topTwentyLimit)
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
+
+                // // Convert map entries to a list
+                // List<Map.Entry<Address, RepData>> entries = new
+                // ArrayList<>(topTwentyPercent.entrySet());
+                // // Shuffle the list
+                // Collections.shuffle(entries, random);
+
+                // // Create a new LinkedHashMap and insert the shuffled entries
+                // LinkedHashMap<Address, RepData> shuffledMap = entries.stream()
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
+
+                // // Calculate top 5% limit
+                // int topFiveLimit = (int) Math.ceil(shuffledMap.size() * 0.5);
+                // // Get the top 5% entries
+                // LinkedHashMap<Address, RepData> topFivePercent = shuffledMap.entrySet()
+                // .stream()
+                // .limit(topFiveLimit)
+                // .collect(Collectors.toMap(
+                // Map.Entry::getKey,
+                // Map.Entry::getValue,
+                // (e1, e2) -> e1,
+                // LinkedHashMap::new));
+                // Sort the repData map by currentReputation values in descending order
+                LinkedHashMap<Address, RepData> sortedMap = repData.entrySet()
                         .stream()
-                        .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
-                        .limit(numToKeep)
+                        .sorted(Map.Entry
+                                .<Address, RepData>comparingByValue(Comparator.comparing(RepData::getCurrentReputation))
+                                .reversed())
                         .collect(Collectors.toMap(
                                 Map.Entry::getKey,
                                 Map.Entry::getValue,
                                 (e1, e2) -> e1,
                                 LinkedHashMap::new));
 
-                
-                while (quorum.size() < QUORUM_SIZE) { // Id like to make quorumSize variable depending on the nodeSize
-                                                      // (Maybe we can do this in config)
-                    quorumNodeIndex = random.nextInt(NUM_NODES); // may be wrong but should still work
-                    quorumNode = globalPeers.get(quorumNodeIndex);
-                    if (!containsAddress(quorum, quorumNode)) {
+                // Calculate top 50% limit
+                int topFiftyLimit = (int) Math.ceil(sortedMap.size() * 0.5);
 
-                        if (tv.calculateReputation(quorumNode, blockchain, seed, quorumNodeIndex, nonce) > 10) {
-                            quorum.add(globalPeers.get(quorumNodeIndex));
-                        }
+                // Get the top 50% entries
+                LinkedHashMap<Address, RepData> topFiftyPercent = sortedMap.entrySet()
+                        .stream()
+                        .limit(topFiftyLimit)
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue,
+                                (e1, e2) -> e1,
+                                LinkedHashMap::new));
 
-                        // Collections.shuffle(quorum, random);
-                    }
-                }
+                // Add these to the quorum
+                quorum.addAll(topFiftyPercent.keySet());
+
                 return quorum;
+
             } catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
@@ -1234,6 +1392,7 @@ public class Node {
                 e.printStackTrace();
             }
             while (true) {
+
                 for (Address address : localPeers) {
                     try {
                         Thread.sleep(10000);
@@ -1253,24 +1412,29 @@ public class Node {
                     }
                 }
             }
+
         }
     }
 
     private final int MAX_PEERS, NUM_NODES, QUORUM_SIZE, MIN_CONNECTIONS, DEBUG_LEVEL, MINIMUM_TRANSACTIONS;
     private final Object lock, quorumLock, memPoolLock, quorumReadyVotesLock, memPoolRoundsLock, sigRoundsLock,
-            blockLock, accountsLock;
+            blockLock, accountsLock, answerHashLock;
     private int quorumReadyVotes, memPoolRounds;
     private ArrayList<Address> globalPeers;
     private ArrayList<Address> localPeers;
     private HashMap<String, Transaction> mempool;
-    HashMap<String, Integer> accounts;
+    private HashMap<String, Integer> accounts;
     private ArrayList<BlockSignature> quorumSigs;
     private LinkedList<Block> blockchain;
-    private final Address myAddress;
+    public final Address myAddress;
     private ServerSocket ss;
     private Block quorumBlock;
     private PrivateKey privateKey;
     private int state;
-    private final String USE;
+    public final String USE;
+
+    public HashMap<Address, RepData> repData = new HashMap<Address, RepData>();
+    private float accuracyPercent; // value between 0 and 1 that determines how likely this node is to get a
+                                   // correct answer as a miner.
 
 }

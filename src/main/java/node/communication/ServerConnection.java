@@ -5,6 +5,7 @@ import node.blockchain.Block;
 import node.blockchain.BlockSkeleton;
 import node.blockchain.Transaction;
 import node.blockchain.PRISM.SubWorkflow;
+import node.blockchain.PRISM.SubWorkflow;
 import node.blockchain.defi.DefiTransaction;
 import node.communication.*;
 import node.communication.messaging.Message;
@@ -48,9 +49,10 @@ public class ServerConnection extends Thread {
         }
     }
 
-    public void handleRequest(Message incomingMessage, ObjectOutputStream oout, ObjectInputStream oin) throws IOException {
+    public void handleRequest(Message incomingMessage, ObjectOutputStream oout, ObjectInputStream oin)
+            throws IOException {
         Message outgoingMessage;
-        switch(incomingMessage.getRequest()){
+        switch (incomingMessage.getRequest()) {
             case REQUEST_CONNECTION:
                 Address address = (Address) incomingMessage.getMetadata();
                 if (node.eligibleConnection(address, true)) {
@@ -96,17 +98,24 @@ public class ServerConnection extends Thread {
                 node.receiveSkeleton(blockSkeleton);
                 break;
             case ALERT_WALLET:
-                Object[] data = (Object[]) incomingMessage.getMetadata();
-                node.alertWallet((String) data[0], (Address) data[1]);
+                if (node.USE.equals("Defi")) {
+                    Object[] data = (Object[]) incomingMessage.getMetadata();
+                    node.alertWallet((String) data[0], (Address) data[1]);
+                } else if (node.USE.equals("PRISM")) {
+                    Address incomingAddress = (Address) incomingMessage.getMetadata();
+                    node.alertWallet(null, incomingAddress);
+                }
                 break;
             case DELEGATE_WORK:
-                //When delegate_work is called, a hashmap is NOT what is passed through, it is the subworkflow
-                //HashMap<String,Transaction> mempool = (HashMap<String,Transaction>) incomingMessage.getMetadata();
-                SubWorkflow work = (SubWorkflow) incomingMessage.getMetadata();
-                node.doWork(work, oin, oout);
+                SubWorkflow data = (SubWorkflow) incomingMessage.getMetadata();
+                node.doWork(data, oin, oout);
                 break;
             case COMPLETED_WORK:
-                
+                Object[] data2 = (Object[]) incomingMessage.getMetadata();
+                break;
+            case RECEIVE_ANSWER_HASH:
+               String data3 =(String) incomingMessage.getMetadata();
+                node.recieveAnswerHash(data3);
                 break;
         }
     }

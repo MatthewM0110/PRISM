@@ -16,11 +16,7 @@ public class Project extends Record {
 
     String uniqueWorkflowID;
     String hypothesis;
-    Address[] authors;
-    public Address[] getAuthors() {
-        return authors;
-    }
-
+    Address author;
     String timestap;
      
     /*
@@ -36,11 +32,20 @@ public class Project extends Record {
      * 
      * 
      */
-    public Project(String hypothesis, Address[] authors, String workflowID) {
+
+    public Project(String hypothesis, String workflowID, Address author) {
         super(RecordType.Project, workflowID);
-        this.authors = authors;
         this.hypothesis = hypothesis;
-        this.uniqueWorkflowID = Hashing.getSHAString(hypothesis + authors);
+        this.author = author;
+        this.uniqueWorkflowID = Hashing.getSHAString(hypothesis);
+    }
+
+    public Address getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(Address author) {
+        this.author = author;
     }
 
   

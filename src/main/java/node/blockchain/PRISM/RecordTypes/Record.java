@@ -1,11 +1,12 @@
 package node.blockchain.PRISM.RecordTypes;
 
-public class Record {
-    public enum RecordType {
+import java.io.Serializable;
+
+public abstract class Record implements Serializable{
+    public enum RecordType  {
         Project,
         ProvenanceRecord,
-        InvalidTask,
-        InvalidData
+      
     }
 
     private RecordType recordType;  
@@ -17,5 +18,9 @@ public class Record {
     Record(RecordType type, String workflowID) {
         this.recordType = type;
         this.workflowID = workflowID;
+    }
+
+    public String toString() {
+        return recordType.toString() + workflowID;
     }
 }
