@@ -15,7 +15,7 @@ public class PRISMTransaction extends Transaction {
     public PRISMTransaction(ProvenanceRecord rec, String timestamp) {
       
         System.out.println("WE GOT A PROVRECENCE RECORD");
-        UID = rec.toString();
+        UID = this.toString();
         this.prismRecord = rec;
         this.timestamp = timestamp;
     }

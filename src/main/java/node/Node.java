@@ -432,6 +432,7 @@ public class Node {
                     oout.writeObject(new Message(Message.Request.PING));
                     oout.flush();
                     quorumReadyVotes++;
+                    System.out.println("Node " + myAddress.getPort() + ": has " + quorumReadyVotes + " votes. Needs: " + (quorum.size() - 1));
                     if (quorumReadyVotes == quorum.size() - 1) {
                         quorumReadyVotes = 0;
                         delegateWork();
@@ -452,7 +453,7 @@ public class Node {
     public void delegateWork() {
         synchronized (lock) {
             minerDatas = new HashMap<Address, MinerData>();
-
+            System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
                                                                     // counts.
             // System.out.println("I am quorum members delegating work");
@@ -508,7 +509,7 @@ public class Node {
         synchronized (answerHashLock) {
             // System.out.println(myAddress + "added to quorumAnsHash---" + hash);
             quorumAnswerHashes.add(hash);
-            System.out.println("QuorumAnswerHashesSize: " + quorumAnswerHashes.size() + "QuorumSize"
+            System.out.println("QuorumAnswerHashesSize: " + quorumAnswerHashes.size() + " QuorumSize: "
                     + deriveQuorum(blockchain.getLast(), 0).size());
             /* If we have all the answer hashes */
             if (quorumAnswerHashes.size() == deriveQuorum(blockchain.getLast(), 0).size() - 1) {
@@ -541,6 +542,8 @@ public class Node {
 
                 ProvenanceRecord pr = (ProvenanceRecord) prismTransaction.getRecord();
                 pr.setAnswerHash(popularHash);
+                System.out.println("Node " + myAddress.getPort() + ": about to send mempool");
+                quorumAnswerHashes = new ArrayList<>();
                 sendMempoolHashes();
             }
         }
@@ -1326,8 +1329,7 @@ public class Node {
                     quorum.add(addresses.get(i));
                 }
 
-                System.out
-                        .println("I'm node " + myAddress + " and I think the quorum consists of " + quorum.toString());
+                //        .println("I'm node " + myAddress + " and I think the quorum consists of " + quorum.toString());
 
                 return quorum;
 
