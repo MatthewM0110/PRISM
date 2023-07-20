@@ -280,13 +280,13 @@ public class Node {
 
     public void verifyTransaction(Transaction transaction) {
         synchronized (memPoolLock) {
-            if (Utils.containsTransactionInMap(transaction, mempool))
+            if (Utils.containsTransactionInMap(transaction, mempool)){
+                //System.out.println("Node " + myAddress.getPort() + ": verifyTransaction says we seen this one: " + transaction.getUID() + ", blockchain size: " + blockchain.size());
                 return;
+            }
 
             if (DEBUG_LEVEL == 1) {
-                System.out.println("Node " + myAddress.getPort() + ": verifyTransaction: " +
-
-                        transaction.getUID() + ", blockchain size: " + blockchain.size());
+                System.out.println("Node " + myAddress.getPort() + ": verifyTransaction: " + transaction.getUID() + ", blockchain size: " + blockchain.size());
             }
             LinkedList<Block> clonedBlockchain = new LinkedList<>();
 
@@ -324,9 +324,9 @@ public class Node {
             }
 
             if (!tv.validate(validatorObjects, repData)) {
-                if (DEBUG_LEVEL == 1) {
+                //if (DEBUG_LEVEL == 1) {
                     System.out.println("Node " + myAddress.getPort() + "Transaction not valid");
-                }
+                //
                 return;
             }
 
@@ -407,6 +407,7 @@ public class Node {
             Block currentBlock = blockchain.getLast();
             ArrayList<Address> quorum = deriveQuorum(currentBlock, 0);
 
+
             if (DEBUG_LEVEL == 1)
                 System.out.println("Node " + myAddress.getPort() + ": receiveQuorumReady invoked for " + quorum);
 
@@ -432,7 +433,6 @@ public class Node {
                     if (quorumReadyVotes == quorum.size() - 1) {
                         quorumReadyVotes = 0;
                         delegateWork();
-
                     }
 
                 }
@@ -1138,8 +1138,7 @@ public class Node {
         } else {
             // PRISM
             PRISMTransactionValidator txValidator = new PRISMTransactionValidator(); 
-       
-            repData = txValidator.calculateReputationsData(block, repData);
+            txValidator.calculateReputationsData(block, repData);
         }
 
         ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
@@ -1203,6 +1202,11 @@ public class Node {
     public ArrayList<Address> deriveQuorum(Block block, int nonce) {
         System.out.println("Deriving quorum for block " + block.getBlockId());
         String blockHash;
+
+        System.out.println(
+                    "Node " + myAddress.getPort() + ": repData " + repData.keySet() + repData.values());
+
+
         if (block != null) {
             try {
                 ArrayList<Address> quorum = new ArrayList<>();
@@ -1212,7 +1216,7 @@ public class Node {
                 int seed = bigInt.intValue();
                 Random random = new Random(seed);
                 PRISMTransactionValidator tv = new PRISMTransactionValidator();
-                repData = tv.calculateReputationsData(block, repData);
+                tv.calculateReputationsData(block, repData);
 
                 // // Sort the repData map by currentReputation values in descending order
                 // LinkedHashMap<Address, RepData> sortedMap = repData.entrySet()
