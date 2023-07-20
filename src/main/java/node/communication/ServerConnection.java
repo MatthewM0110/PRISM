@@ -4,6 +4,7 @@ import node.Node;
 import node.blockchain.Block;
 import node.blockchain.BlockSkeleton;
 import node.blockchain.Transaction;
+import node.blockchain.PRISM.SubWorkflow;
 import node.blockchain.defi.DefiTransaction;
 import node.communication.*;
 import node.communication.messaging.Message;
@@ -105,15 +106,15 @@ public class ServerConnection extends Thread {
                 }
                 break;
             case DELEGATE_WORK:
-                HashMap<String, Transaction> mempool = (HashMap<String, Transaction>) incomingMessage.getMetadata();
-                node.doWork(mempool, oin, oout);
+                SubWorkflow data = (SubWorkflow) incomingMessage.getMetadata();
+                node.doWork(data, oin, oout);
                 break;
             case COMPLETED_WORK:
-                Object[] data = (Object[]) incomingMessage.getMetadata();
+                Object[] data2 = (Object[]) incomingMessage.getMetadata();
                 break;
             case RECEIVE_ANSWER_HASH:
-               String data2 =(String) incomingMessage.getMetadata();
-                node.recieveAnswerHash(data2);
+               String data3 =(String) incomingMessage.getMetadata();
+                node.recieveAnswerHash(data3);
                 break;
         }
     }

@@ -1,10 +1,12 @@
 package node;
 
 import node.blockchain.*;
+import node.blockchain.PRISM.EnumSubWorkflow;
 import node.blockchain.PRISM.MinerData;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
 import node.blockchain.PRISM.RepData;
+import node.blockchain.PRISM.SubWorkflow;
 import node.blockchain.PRISM.PRISMBlock;
 import node.blockchain.PRISM.RecordTypes.ProvenanceRecord;
 import node.blockchain.healthcare.*;
@@ -56,7 +58,7 @@ import static node.communication.utils.Utils.*;
  */
 public class Node {
 
-    HashMap<Address,MinerData> minerDatas;
+    HashMap<Address, MinerData> minerDatas;
 
     /**
      * Node constructor creates node and begins server socket to accept connections
@@ -174,14 +176,14 @@ public class Node {
 
             for (Address address : globalPeers) {
                 repData.put(address, new RepData());
-                
+
             }
-             for (Address address : repData.keySet()) {
-               System.out.println(repData.get(address).toString());
-                
+            for (Address address : repData.keySet()) {
+                System.out.println(repData.get(address).toString());
+
             }
             addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0, minerDatas)); // Creating a blank
-                                                                                       // genesis block
+            // genesis block
         }
     }
 
@@ -449,14 +451,40 @@ public class Node {
 
     public void delegateWork() {
         synchronized (lock) {
-            minerDatas = new HashMap<Address,MinerData>();
+            minerDatas = new HashMap<Address, MinerData>();
+            Random rand = new Random();
+            int myPick = rand.nextInt(10);
+            SubWorkflow myWorkflow;
+            if (myPick == 0) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_0.getSubWorkflow();
+            } else if (myPick == 1) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_1.getSubWorkflow();
+            } else if (myPick == 2) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_2.getSubWorkflow();
+            } else if (myPick == 3) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_3.getSubWorkflow();
+            } else if (myPick == 4) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_4.getSubWorkflow();
+            } else if (myPick == 5) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_5.getSubWorkflow();
+            } else if (myPick == 6) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_6.getSubWorkflow();
+            } else if (myPick == 7) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_7.getSubWorkflow();
+            } else if (myPick == 8) {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_8.getSubWorkflow();
+            } else {
+                myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_9.getSubWorkflow();
+            }
+            int iterator = myWorkflow.getNumSteps();
 
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
                                                                     // counts.
             System.out.println("I am quorum members delegating work");
             for (Address address : localPeers) {
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-                    minerDatas.put(address,new MinerData(address, 0, "0"));
+
+                    minerDatas.put(address, new MinerData(address, 0, "0"));
                     long startTime = System.currentTimeMillis();
                     // if my neighbour is a quorum member, returndoWork
                     System.out.println("send work to " + address.toString());
@@ -479,6 +507,10 @@ public class Node {
                         }
                     }
                 }
+                if(iterator == 1){
+                    break; //should we break here?
+                }
+                iterator--;
             }
 
             String popularHash = "";
@@ -544,7 +576,7 @@ public class Node {
         }
     }
 
-    public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
+    public void doWork(SubWorkflow subWorkflow, ObjectInputStream oin, ObjectOutputStream oout) {
         PRISMTransaction PRISMtx = null;
 
         for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
@@ -1105,7 +1137,7 @@ public class Node {
 
         blockchain.add(block);
         System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values());
-        for(Address address : repData.keySet()){
+        for (Address address : repData.keySet()) {
             System.out.println(repData.get(address).getCurrentReputation());
         }
 
@@ -1137,8 +1169,8 @@ public class Node {
             }
         } else {
             // PRISM
-            PRISMTransactionValidator txValidator = new PRISMTransactionValidator(); 
-       
+            PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
+
             repData = txValidator.calculateReputationsData(block, repData);
         }
 
