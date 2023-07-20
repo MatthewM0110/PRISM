@@ -37,8 +37,23 @@ public class PRISMTransactionValidator extends TransactionValidator {
             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
         for (Address address : pBlock.getMinerData().keySet()) { // Get the miner data in that P rovenanceRecord
-            System.out.println(address.toString()); 
-            RepData rData = repData.get(address);
+            // System.out.println(address.toString());
+            // System.out.println(repData.keySet());
+            // System.out.println(repData.values());
+
+            Address addressFound = null;
+
+            for(Address address2 : repData.keySet()){
+                if(address.equals(address2)){
+                    //System.out.println(address + " is equal to " + address2);
+                    addressFound = address2;
+                }else{
+                    //System.out.println(address + " is not equal to " + address2);
+                }
+            }
+        
+            RepData rData = repData.get(addressFound);
+
             MinerData mData = pBlock.getMinerData().get(address);
             rData.addBlocksParticipated();
             if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
@@ -52,7 +67,7 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
-            repData.put(address, rData); // Update the reputation data for the miner
+            repData.put(addressFound, rData); // Update the reputation data for the miner
         }
 
         return repData; // Return the modified reputation data

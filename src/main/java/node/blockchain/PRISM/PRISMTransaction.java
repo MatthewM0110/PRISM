@@ -15,11 +15,9 @@ public class PRISMTransaction extends Transaction {
     public PRISMTransaction(ProvenanceRecord rec, String timestamp) {
       
         System.out.println("WE GOT A PROVRECENCE RECORD");
-        UID = Hashing.getSHAString(rec.toString() + timestamp);
+        UID = rec.toString();
         this.prismRecord = rec;
         this.timestamp = timestamp;
-    
-
     }
 
     public ProvenanceRecord getRecord() {
@@ -28,8 +26,7 @@ public class PRISMTransaction extends Transaction {
 
     @Override
     public String toString() {
-        // TODO Auto-generated method stub
-        return "Record:" + UID + " Timestamp:" + timestamp;
+        return timestamp;
     }
 
     public String getUID() {
