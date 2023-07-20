@@ -237,8 +237,15 @@ public class Client {
                     Message incomingMessage = (Message) oin.readObject();
 
                     if (incomingMessage.getRequest().name().equals("ALERT_WALLET")) {
-                        MerkleTreeProof mtp = (MerkleTreeProof) incomingMessage.getMetadata();
-                        defiClient.updateAccounts(mtp);
+                        
+
+                        if(use.equals("PRISM")){
+                            //PRISMClient.doSomething
+                            // Block has been posted, submit new transaction
+                        }else{
+                            MerkleTreeProof mtp = (MerkleTreeProof) incomingMessage.getMetadata();
+                            defiClient.updateAccounts(mtp);
+                        }
                     }
                 } catch (IOException e) {
                     System.out.println(e);
