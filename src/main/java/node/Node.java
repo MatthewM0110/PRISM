@@ -582,10 +582,10 @@ public class Node {
     public void doWork(SubWorkflow subWorkflow, ObjectInputStream oin, ObjectOutputStream oout) {
         PRISMTransaction PRISMtx = null;
 
-        for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
-            // transaction per block) - maybe
-            PRISMtx = (PRISMTransaction) txList.get(txHash);
-        }
+        // for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
+        //     // transaction per block) - maybe
+        //     PRISMtx = (PRISMTransaction) txList.get(txHash);
+        // }
 
         // Percentage (from 0 to 1) that controls whether to use PRISMtx.getUID hash or
         // a random hash
