@@ -35,13 +35,12 @@ public class PRISMTransactionValidator extends TransactionValidator {
         float minimumTime = Float.MAX_VALUE;
 
         // for(Address address : pBlock.getMinerData().keySet()){
-        //    MinerData printingMData =  pBlock.getMinerData().get(address);
-        //   // System.out.println("Miner: " + address  + "- Time: " + printingMData.getTimestamp() + " Output: " + printingMData.getOutputHash());
+        // MinerData printingMData = pBlock.getMinerData().get(address);
+        // // System.out.println("Miner: " + address + "- Time: " +
+        // printingMData.getTimestamp() + " Output: " + printingMData.getOutputHash());
 
         // }
         // System.out.println("The correct output was " + pBlock.correctOutput);
-
-             
 
         for (Address address : pBlock.getMinerData().keySet()) {
             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
@@ -70,7 +69,7 @@ public class PRISMTransactionValidator extends TransactionValidator {
             // System.out.println("Address" + addressFound + " ####################");
 
             rData.addBlocksParticipated();
-            ;
+
             if (mData.getOutputHash().equals(pBlock.getCorrectOutput())) {
 
                 rData.addAccuracySummation(1);
@@ -84,10 +83,11 @@ public class PRISMTransactionValidator extends TransactionValidator {
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
 
-            System.out.println(addressFound + ": Correct:  " + (mData.getOutputHash().equals(pBlock.getCorrectOutput())) +
-                    " - My accuracy is:" + rData.getAccurarySummation() +
-                    " - I was right " + rData.getAccuracyCount() + "/ " + rData.getBlocksParticipated() +
-                    " - My rep is now " + rData.getCurrentReputation());
+            System.out.println(
+                    addressFound + ": Correct:  " + (mData.getOutputHash() + " = " + (pBlock.getCorrectOutput())) +
+                            " - My accuracy is:" + rData.getAccurarySummation() +
+                            " - I was right " + rData.getAccuracyCount() + "/ " + rData.getBlocksParticipated() +
+                            " - My rep is now " + rData.getCurrentReputation());
             // System.out.println("Reputation for:" + addressFound + "is " +
             // rData.currentReputation);
             repData.put(addressFound, rData); // Update the reputation data for the miner

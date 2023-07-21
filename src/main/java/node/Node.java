@@ -108,7 +108,6 @@ public class Node {
         localPeers = new ArrayList<>();
         mempool = new HashMap<>();
         accountsToAlert = new HashMap<>();
-        myMinerData = new HashMap<Address, MinerData>();
 
         /* Public-Private (DSA) Keys */
         KeyPair keys = generateDSAKeyPair();
@@ -455,7 +454,7 @@ public class Node {
 
     public void delegateWork() {
         synchronized (lock) {
-            myMinerData = new HashMap<Address, MinerData>();
+            minerData = new HashMap<Address, MinerData>();
 
             // System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
@@ -464,7 +463,7 @@ public class Node {
             for (Address address : localPeers) {
 
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-                    myMinerData.put(address, new MinerData(address, 0, "0"));
+                    minerData.put(address, new MinerData(address, 0, "0"));
                     long startTime = System.currentTimeMillis();
                     // if my neighbour is a quorum member, returndoWork
                     // System.out.println("send work to " + address.toString());
@@ -476,11 +475,11 @@ public class Node {
                         long endTime = System.currentTimeMillis();
 
                         hash = Hashing.getSHAString((String) reply.getMetadata());
-                        myMinerData.get(address).setOutputHash(hash);
+                        minerData.get(address).setOutputHash(hash);
                         // System.out.println("got work back from " + address.toString());
                         // Check if the hash is already in the map. If it is, increment its count.
                         // Otherwise, add it to the map with a count of 1.
-                        myMinerData.get(address).setTimestamp(endTime - startTime);
+                        minerData.get(address).setTimestamp(endTime - startTime);
                         if (minerOutput.containsKey(hash)) {
                             minerOutput.put(hash, minerOutput.get(hash) + 1);
                         } else {
@@ -551,40 +550,106 @@ public class Node {
 
                 // sendMempoolHashes();
                 // System.out.println("sending miner datas");
-                sendOneWayMessageQuorum(new Message(Message.Request.RECEIVE_MINER_DATA, myMinerData));
+                sendOneWayMessageQuorum(new Message(Message.Request.RECEIVE_MINER_DATA, minerData));
             }
         }
     }
 
-    HashMap<Address, MinerData> minerData = new HashMap<>();
+    HashMap<Address, MinerData> minerData = new HashMap<>(); //all Miner datas fro all quorum members
 
     public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
-        System.out.println("obtained other miner datas");
+
         synchronized (minerDataLock) {
-            // Do something with mier datas
-            // Now we have a consistent miner datas
 
             for (Address address : otherMinerData.keySet()) {
-                if (minerData.containsKey(address)) {
-                    if (!otherMinerData.get(address).equals(minerData.get(address))) {
-                        // These arent the same-- a miner submitted data to two quorum mmebers
-                        // we need to get the miner information that is the best, we should check for
-                        // correctness and then timeliness
+
+                if (minerData.containsKey(address)) { // I have work from the same miner- lets pick one
+                    if (!minerData.get(address).equals(otherMinerData.get(address))) { // we DONT have the same work
+                                                                                         // from both of our miners,
+                                                                                         // lets decice which one we
+                                                                                         // need to keep based off
+                                                                                         // timestamp size (WHAT IF
+                                                                                         // TIMESTAMP IS EQUAL BUT
+                                                                                         // ANSWER ISNT)
+                        if (minerData.get(address).getOutputHash() != otherMinerData.get(address).getOutputHash()) {
+                            // This miner gave two different, should we just disregard?
+                        }
                         if (minerData.get(address).getTimestamp() > otherMinerData.get(address).getTimestamp()) {
-                            // we didnt have the shortest timestamp so we should get the other persons dara
+                            minerData.remove(address);
                             minerData.put(address, otherMinerData.get(address));
                         }
-
                     }
-                } else {
+                } else { // I don have work from the same miner- lets add it
+
                     minerData.put(address, otherMinerData.get(address));
+
                 }
 
             }
-            // System.out.println("sending mempool hashes ");
             sendMempoolHashes();
+            // Do something with mier datas
+            // Now we have a consistent miner datas
+
+            // for (Address address : otherMinerData.keySet()) {
+            // Address addressFound = address;
+            // Address addressFound2 = null;
+
+            // for (Address address2 : otherMinerData.keySet()) {
+            // if (address.equals(address2)) {
+            // // System.out.println(address + " is equal to " + address2);
+            // addressFound = address2;
+            // } else {
+            // // System.out.println(address + " is not equal to " + address2);
+            // }
+            // }
+            // for (Address address2 : myMinerData.keySet()) {
+            // if (addressFound.equals(address2)) {
+            // // System.out.println(address + " is equal to " + address2);
+            // addressFound2 = address2;
+            // } else {
+            // // System.out.println(address + " is not equal to " + address2);
+            // }
+            // }
+            // if (addressFound2 == null) {
+            // minerData.put(addressFound2, otherMinerData.get(addressFound));
+            // System.out.println("we didnt have this addresses miner data so we add it to
+            // ours");
+            // } else {
+
+            // // if (addressFound2.equals(addressFound)) {
+            // // System.out.println(
+            // // "The address are equal and we need to check if the minerData they contain
+            // is
+            // // equal");
+
+            // if (!otherMinerData.get(addressFound).equals(myMinerData.get(addressFound2)))
+            // {
+            // // These arent the same-- a miner submitted data to two quorum mmebers
+            // // we need to get the miner information that is the best, we should check for
+            // // correctness and then timeliness
+            // System.out.println("We have unequal miner data for the same address");
+            // if (myMinerData.get(addressFound2).getTimestamp() >
+            // otherMinerData.get(addressFound)
+            // .getTimestamp()) {
+            // System.out.println("We are picking the address with the smallest timestamp
+            // ");
+            // // we didnt have the shortest timestamp so we should get the other persons
+            // data
+            // minerData.put(addressFound2, otherMinerData.get(addressFound));
+            // }
+            // }
+            // }
+            // } else {
+            // System.out.println("we dont have this persons data, we are gonna add it to
+            // our minerData");
+            // minerData.put(addressFound, otherMinerData.get(addressFound));
+            // }
+
         }
+
     }
+
+    // System.out.println("sending mempool hashes ");
 
     public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
         PRISMTransaction PRISMtx = null;
@@ -970,7 +1035,7 @@ public class Node {
                 Messager.sendOneWayMessage(address, new Message(Message.Request.RECEIVE_SKELETON, skeleton), myAddress);
             }
 
-            minerData = new HashMap<Address, MinerData>();
+            minerData.clear();
 
         }
     }
@@ -1064,9 +1129,10 @@ public class Node {
             Block newBlock = constructBlockWithSkeleton(blockSkeleton);
             PRISMBlock pBlock = (PRISMBlock) newBlock;
             pBlock.setMinerData(blockSkeleton.getMinerData());
+            System.out.println("Validate skeleton: " + pBlock.getMinerData().keySet());
             addBlock(pBlock);
             sendSkeleton(blockSkeleton);
-            minerData = new HashMap<Address, MinerData>();
+            minerData.clear();
 
         }
     }
@@ -1200,7 +1266,7 @@ public class Node {
 
         ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
 
-        if (DEBUG_LEVEL == 1) {
+        if (DEBUG_LEVEL == 0) {
             System.out.println(
                     "Node " + myAddress.getPort() + ": Added block " + block.getBlockId() + ". Next quorum: " + quorum);
         }
@@ -1385,12 +1451,10 @@ public class Node {
                 for (int i = 0; i < quorumSize; i++) {
                     quorum.add(addresses.get(i));
                 }
-                for(Address address : quorum) {
-                    System.out.println((address) + "is in quorum");;
-                }
+
                 // .println("I'm node " + myAddress + " and I think the quorum consists of " +
-                // quorum.toString());  
-                
+                // quorum.toString());
+
                 return quorum;
 
             } catch (NoSuchAlgorithmException e) {
@@ -1501,5 +1565,4 @@ public class Node {
     public HashMap<Address, RepData> repData = new HashMap<Address, RepData>();
     private float accuracyPercent; // value between 0 and 1 that determines how likely this node is to get a
                                    // correct answer as a miner.
-    HashMap<Address, MinerData> myMinerData;
 }
