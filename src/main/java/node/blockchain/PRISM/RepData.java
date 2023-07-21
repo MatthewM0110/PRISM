@@ -15,6 +15,7 @@ public class RepData {
     }
     
     public void addTimeSummation(float time){
+        //fix me
         this.timeSummation += time;
     }
     public void addAccuracySummation(float accuracy){

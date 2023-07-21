@@ -1151,10 +1151,10 @@ public class Node {
 
         blockchain.add(block);
         PRISMBlock pBlock = (PRISMBlock) block;
+        //Maybe we need to set the miner data here instead?
 
         //// PRISM setting miner data of added block
-        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()
-                + " myMinerData: " + pBlock.getMinerData().keySet());
+        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()  + " myMinerData: " + pBlock.getMinerData().values());
 
         if (USE.equals("Defi")) {
             HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();

@@ -34,6 +34,11 @@ public class PRISMTransactionValidator extends TransactionValidator {
         PRISMBlock pBlock = (PRISMBlock) block;
         float minimumTime = Float.MAX_VALUE;
 
+        for(Address address : pBlock.getMinerData().keySet()){
+           MinerData printingMData =  pBlock.getMinerData().get(address);
+           System.out.println("Miner: " + address  + "- Time: " + printingMData.getTimestamp() + " Output: " + printingMData.getOutputHash());
+
+        }
         // System.out.println("The correct output was " + pBlock.correctOutput);
 
         for (Address address : pBlock.getMinerData().keySet()) {
