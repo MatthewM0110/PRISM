@@ -433,7 +433,8 @@ public class Node {
                     oout.writeObject(new Message(Message.Request.PING));
                     oout.flush();
                     quorumReadyVotes++;
-                    System.out.println("Node " + myAddress.getPort() + ": has " + quorumReadyVotes + " votes. Needs: " + (quorum.size() - 1));
+                    System.out.println("Node " + myAddress.getPort() + ": has " + quorumReadyVotes + " votes. Needs: "
+                            + (quorum.size() - 1));
                     if (quorumReadyVotes == quorum.size() - 1) {
                         quorumReadyVotes = 0;
                         delegateWork();
@@ -546,22 +547,21 @@ public class Node {
                 System.out.println("Node " + myAddress.getPort() + ": about to send mempool");
                 quorumAnswerHashes = new ArrayList<>();
 
+                sendMempoolHashes();
 
                 sendMinerData();
             }
         }
     }
 
-    public void sendMinerData(){
-
+    public void sendMinerData() {
 
     }
 
-    public void receiveMinerData(MinerData md){
-        synchronized(new Object()){
+    public void receiveMinerData(MinerData md) {
+        synchronized (new Object()) {
             // Do something with mier datas
             // Now we have a consistent miner datas
-            sendMempoolHashes();
         }
     }
 
@@ -1082,7 +1082,8 @@ public class Node {
                 try {
                     newBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size(), minerDatas); // Miner data comes from skelton not global (skeleton.getMinderDatas())
+                            blockchain.size(), minerDatas); // Miner data comes from skelton not global
+                                                            // (skeleton.getMinderDatas())
                 } catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException(e);
                 }
@@ -1124,7 +1125,8 @@ public class Node {
 
         blockchain.add(block);
         PRISMBlock pBlock = (PRISMBlock) block;
-        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values() + " minerDatas: " + pBlock.getMinerData().keySet());
+        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()
+                + " minerDatas: " + pBlock.getMinerData().keySet());
 
         if (USE.equals("Defi")) {
             HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();
@@ -1341,12 +1343,13 @@ public class Node {
                 Collections.shuffle(addresses, random);
 
                 // Select the top 50% addresses as the quorum
-                int quorumSize = addresses.size()  / 3;
+                int quorumSize = addresses.size() / 3;
                 for (int i = 0; i < quorumSize; i++) {
                     quorum.add(addresses.get(i));
                 }
 
-                //        .println("I'm node " + myAddress + " and I think the quorum consists of " + quorum.toString());
+                // .println("I'm node " + myAddress + " and I think the quorum consists of " +
+                // quorum.toString());
 
                 return quorum;
 
