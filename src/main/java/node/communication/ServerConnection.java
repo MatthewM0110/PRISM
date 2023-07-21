@@ -113,15 +113,13 @@ public class ServerConnection extends Thread {
                 Object[] data = (Object[]) incomingMessage.getMetadata();
                 break;
             case RECEIVE_ANSWER_HASH:
-               String data2 =(String) incomingMessage.getMetadata();
+                String data2 = (String) incomingMessage.getMetadata();
                 node.recieveAnswerHash(data2);
                 break;
             case RECEIVE_MINER_DATA:
-                HashMap<Address,MinerData> data3 = (HashMap<Address,MinerData>)incomingMessage.getMetadata();
+                HashMap<Address, MinerData> data3 = (HashMap<Address, MinerData>) incomingMessage.getMetadata();
                 node.receiveMinerData(data3);
                 break;
-            
-            
 
         }
     }

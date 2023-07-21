@@ -1,7 +1,7 @@
 package node.blockchain.PRISM;
 
 import node.communication.Address;
-
+import java.lang.*;
 public class RepData {
 
     float currentReputation;
@@ -15,8 +15,8 @@ public class RepData {
     }
     
     public void addTimeSummation(float time){
-        //fix me
-        this.timeSummation += time;
+        float value = (float) (1f/Math.pow(2,time));
+        this.timeSummation += value;
     }
     public void addAccuracySummation(float accuracy){
         this.accurarySummation += accuracy;

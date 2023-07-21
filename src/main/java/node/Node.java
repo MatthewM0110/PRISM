@@ -462,6 +462,7 @@ public class Node {
                                                                     // counts.
             // System.out.println("I am quorum members delegating work");
             for (Address address : localPeers) {
+
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
                     myMinerData.put(address, new MinerData(address, 0, "0"));
                     long startTime = System.currentTimeMillis();
@@ -472,10 +473,11 @@ public class Node {
                     String hash = null;
 
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
+                        long endTime = System.currentTimeMillis();
+
                         hash = Hashing.getSHAString((String) reply.getMetadata());
                         myMinerData.get(address).setOutputHash(hash);
                         // System.out.println("got work back from " + address.toString());
-                        long endTime = System.currentTimeMillis();
                         // Check if the hash is already in the map. If it is, increment its count.
                         // Otherwise, add it to the map with a count of 1.
                         myMinerData.get(address).setTimestamp(endTime - startTime);
@@ -549,7 +551,7 @@ public class Node {
 
                 // sendMempoolHashes();
                 // System.out.println("sending miner datas");
-                sendOneWayMessageQuorum(new Message(Request.RECEIVE_MINER_DATA, myMinerData));
+                sendOneWayMessageQuorum(new Message(Message.Request.RECEIVE_MINER_DATA, myMinerData));
             }
         }
     }
@@ -557,7 +559,7 @@ public class Node {
     HashMap<Address, MinerData> minerData = new HashMap<>();
 
     public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
-        // System.out.println("obtained other miner datas");
+        System.out.println("obtained other miner datas");
         synchronized (minerDataLock) {
             // Do something with mier datas
             // Now we have a consistent miner datas
@@ -571,7 +573,6 @@ public class Node {
                         if (minerData.get(address).getTimestamp() > otherMinerData.get(address).getTimestamp()) {
                             // we didnt have the shortest timestamp so we should get the other persons dara
                             minerData.put(address, otherMinerData.get(address));
-
                         }
 
                     }
@@ -604,11 +605,11 @@ public class Node {
         if (Math.random() < accuracyPercent && PRISMtx != null) {
             hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
         } else {
-            hash = "aaa"; // assuming you have a method to generate random hashes
+            // assuming you have a method to generate random hashes
 
         }
         // Do work
-
+        hash = "aaa";
         try {
             oout.writeObject(new Message(Request.COMPLETED_WORK, hash));
             oout.flush();
@@ -1151,10 +1152,18 @@ public class Node {
 
         blockchain.add(block);
         PRISMBlock pBlock = (PRISMBlock) block;
-        //Maybe we need to set the miner data here instead?
+        // Maybe we need to set the miner data here instead?
 
         //// PRISM setting miner data of added block
-        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()  + " myMinerData: " + pBlock.getMinerData().values());
+        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()
+                + " myMinerData: ");
+        // pBlock.getMinerData().values()
+        for (Address address : pBlock.getMinerData().keySet()) {
+            MinerData printingMData = pBlock.getMinerData().get(address);
+            System.out.println("Miner: " + address + "- Time: " + printingMData.getTimestamp() + " Output: "
+                    + printingMData.getOutputHash());
+
+        }
 
         if (USE.equals("Defi")) {
             HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();
@@ -1376,10 +1385,12 @@ public class Node {
                 for (int i = 0; i < quorumSize; i++) {
                     quorum.add(addresses.get(i));
                 }
-
+                for(Address address : quorum) {
+                    System.out.println((address) + "is in quorum");;
+                }
                 // .println("I'm node " + myAddress + " and I think the quorum consists of " +
-                // quorum.toString());
-
+                // quorum.toString());  
+                
                 return quorum;
 
             } catch (NoSuchAlgorithmException e) {
