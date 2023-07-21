@@ -1059,8 +1059,12 @@ public class Node {
             }
 
             Block newBlock = constructBlockWithSkeleton(blockSkeleton);
-            addBlock(newBlock);
+            PRISMBlock pBlock = (PRISMBlock) newBlock;
+            pBlock.setMinerData(blockSkeleton.getMinerData());
+            addBlock(pBlock);
             sendSkeleton(blockSkeleton);
+            minerData = new HashMap<Address,MinerData>();
+
 
         }
     }
@@ -1146,7 +1150,8 @@ public class Node {
 
         blockchain.add(block);
         PRISMBlock pBlock = (PRISMBlock) block;
-        //pBlock.setMinerData(minerData); //PRISM setting miner data of added block
+
+        //// PRISM setting miner data of added block
         System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()
                 + " myMinerData: " + pBlock.getMinerData().keySet());
 
@@ -1180,6 +1185,7 @@ public class Node {
             // PRISM
             PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
             txValidator.calculateReputationsData(block, repData);
+            
 
         }
 

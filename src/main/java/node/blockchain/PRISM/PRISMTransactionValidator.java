@@ -15,8 +15,8 @@ import node.communication.Address;
 
 public class PRISMTransactionValidator extends TransactionValidator {
 
-    private float alpha = 1;
-    private float beta = 1;
+    private float alpha = 0.5f;
+    private float beta = 0.5f;
     private float gamma = 1;
 
     /**
@@ -33,6 +33,10 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
         PRISMBlock pBlock = (PRISMBlock) block;
         float minimumTime = Float.MAX_VALUE;
+
+        System.out.println("The correct output was " + pBlock.correctOutput);
+
+
         for (Address address : pBlock.getMinerData().keySet()) {
             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
@@ -56,20 +60,27 @@ public class PRISMTransactionValidator extends TransactionValidator {
             RepData rData = repData.get(addressFound);
 
             MinerData mData = pBlock.getMinerData().get(address);
+
+            System.out.println("Address" + addressFound + " ####################");
+
             rData.addBlocksParticipated();
+            ;
             if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
+                
                 rData.addAccuracySummation(1);
                 rData.addAccuracyCount();
             } else {
                 rData.addAccuracySummation(-1);
             }
-
-            rData.addTimeSummation(minimumTime - mData.getTimestamp());
+            System.out.println("I got " + mData.getOutputHash() + " and the most popular was " + pBlock.getCorrectOutput() + "Im accurate:"+ rData.getAccurarySummation() + "and I was right " + rData.getAccuracyCount() + " times out of " + rData.getBlocksParticipated());
+            rData.addTimeSummation( mData.getTimestamp() - minimumTime );
 
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
             System.out.println("Reputation for:" + addressFound + "is " + rData.currentReputation);
             repData.put(addressFound, rData); // Update the reputation data for the miner
+            System.out.println("END Address" + addressFound + " ####################");
+
         }
 
         return repData; // Return the modified reputation data
@@ -110,9 +121,10 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
     public float calculateReputation(RepData repData) {
         return (((alpha * repData.getAccurarySummation())
-                + (beta * repData.getTimeSummation()))
-                + (gamma * ((float) repData.getAccuracyCount() / repData.blocksParticipated)))
-                / repData.blocksParticipated; // Calculate the reputation score and return it
+                + (beta * repData.getTimeSummation())) * 
+                
+                (gamma * ((float) repData.getAccuracyCount() / repData.blocksParticipated)
+                / repData.blocksParticipated)); // Calculate the reputation score and return it
     }
 
     public boolean validate(Object[] objects, HashMap<Address, RepData> repData) {

@@ -1,8 +1,11 @@
 package node.blockchain.PRISM;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import node.blockchain.Block;
 import node.blockchain.Transaction;
@@ -29,6 +32,19 @@ public class PRISMBlock extends Block {
 
     public void setMinerData(HashMap<Address, MinerData> minerData) {
         this.minerData = minerData;
+
+        /* Looping through minerData to find the most popular outputHash */
+        HashMap<String, Integer> outputHashFrequency = new HashMap<>();
+        for (MinerData data : minerData.values()) {
+            String outputHash = data.getOutputHash();
+            outputHashFrequency.put(outputHash, outputHashFrequency.getOrDefault(outputHash, 0) + 1);
+        }
+
+        String mostPopularOutputHash = Collections.max(outputHashFrequency.entrySet(),
+                Comparator.comparingInt(Map.Entry::getValue)).getKey();
+
+        this.correctOutput = mostPopularOutputHash;
+
     }
 
     public PRISMBlock(HashMap<String, Transaction> txList, String prevBlockHash, int blockId,
@@ -39,7 +55,6 @@ public class PRISMBlock extends Block {
         this.prevBlockHash = prevBlockHash;
         this.blockId = blockId;
         this.minerData = minerData;
-        
 
         /* Converting the transaction from Block to DefiTransactions */
         HashSet<String> keys = new HashSet<>(txList.keySet());
@@ -47,6 +62,7 @@ public class PRISMBlock extends Block {
             PRISMTransaction transactionInList = (PRISMTransaction) txList.get(key);
             this.txList.put(key, transactionInList);
         }
+
     }
 
 }

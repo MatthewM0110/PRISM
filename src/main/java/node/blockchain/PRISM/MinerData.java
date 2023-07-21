@@ -41,6 +41,4 @@ public class MinerData implements Serializable {
         this.timestamp = timestamp;
     }
 
-  
-
 }

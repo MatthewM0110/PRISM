@@ -10,7 +10,6 @@ public class PRISMTransaction extends Transaction {
 
     private ProvenanceRecord prismRecord;
     private String timestamp;
-    
 
     public PRISMTransaction(ProvenanceRecord rec, String timestamp) {
         
