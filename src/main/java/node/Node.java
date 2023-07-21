@@ -175,9 +175,11 @@ public class Node {
                 repData.put(address, new RepData());
 
             }
-            for (Address address : repData.keySet()) {
-                System.out.println(repData.get(address).toString());
+            if (DEBUG_LEVEL == 1) {
+                for (Address address : repData.keySet()) {
+                    System.out.println(repData.get(address).toString());
 
+                }
             }
             addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0, minerData)); // Creating a blank
             // genesis block
@@ -455,7 +457,7 @@ public class Node {
         synchronized (lock) {
             myMinerData = new HashMap<Address, MinerData>();
 
-            System.out.println("Node " + myAddress.getPort() + ": delegating work");
+            // System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
                                                                     // counts.
             // System.out.println("I am quorum members delegating work");
@@ -509,8 +511,8 @@ public class Node {
         synchronized (answerHashLock) {
             // System.out.println(myAddress + "added to quorumAnsHash---" + hash);
             quorumAnswerHashes.add(hash);
-            System.out.println("QuorumAnswerHashesSize: " + quorumAnswerHashes.size() + " QuorumSize: "
-                    + deriveQuorum(blockchain.getLast(), 0).size());
+            // System.out.println("QuorumAnswerHashesSize: " + quorumAnswerHashes.size() + "
+            // QuorumSize: "+ deriveQuorum(blockchain.getLast(), 0).size());
             /* If we have all the answer hashes */
             if (quorumAnswerHashes.size() == deriveQuorum(blockchain.getLast(), 0).size() - 1) {
                 /* See which is most voted between Q member */
@@ -546,7 +548,7 @@ public class Node {
                 quorumAnswerHashes = new ArrayList<>();
 
                 // sendMempoolHashes();
-                System.out.println("sending miner datas");
+                // System.out.println("sending miner datas");
                 sendOneWayMessageQuorum(new Message(Request.RECEIVE_MINER_DATA, myMinerData));
             }
         }
@@ -555,7 +557,7 @@ public class Node {
     HashMap<Address, MinerData> minerData = new HashMap<>();
 
     public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
-        System.out.println("obtained other miner datas");
+        // System.out.println("obtained other miner datas");
         synchronized (minerDataLock) {
             // Do something with mier datas
             // Now we have a consistent miner datas
@@ -578,7 +580,7 @@ public class Node {
                 }
 
             }
-            System.out.println("sending mempool hashes ");
+            // System.out.println("sending mempool hashes ");
             sendMempoolHashes();
         }
     }
@@ -602,9 +604,9 @@ public class Node {
         if (Math.random() < accuracyPercent && PRISMtx != null) {
             hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
         } else {
+            hash = "aaa"; // assuming you have a method to generate random hashes
 
         }
-        hash = "aaa"; // assuming you have a method to generate random hashes
         // Do work
 
         try {
@@ -1063,8 +1065,7 @@ public class Node {
             pBlock.setMinerData(blockSkeleton.getMinerData());
             addBlock(pBlock);
             sendSkeleton(blockSkeleton);
-            minerData = new HashMap<Address,MinerData>();
-
+            minerData = new HashMap<Address, MinerData>();
 
         }
     }
@@ -1185,7 +1186,6 @@ public class Node {
             // PRISM
             PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
             txValidator.calculateReputationsData(block, repData);
-            
 
         }
 
