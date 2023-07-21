@@ -1,7 +1,7 @@
 workflowID=(1 2 3 4 5 6 7 8 9 10)
 inputData=(1 2 3 4)
 task=(1 2 3)
-for i in {1..3}
+for i in {1}
 do
     echo "t"
     echo ${workflowID[$((RANDOM % 10))]}

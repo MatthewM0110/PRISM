@@ -4,6 +4,7 @@ import node.Node;
 import node.blockchain.Block;
 import node.blockchain.BlockSkeleton;
 import node.blockchain.Transaction;
+import node.blockchain.PRISM.MinerData;
 import node.blockchain.defi.DefiTransaction;
 import node.communication.*;
 import node.communication.messaging.Message;
@@ -115,6 +116,13 @@ public class ServerConnection extends Thread {
                String data2 =(String) incomingMessage.getMetadata();
                 node.recieveAnswerHash(data2);
                 break;
+            case RECEIVE_MINER_DATA:
+                HashMap<Address,MinerData> data3 = (HashMap<Address,MinerData>)incomingMessage.getMetadata();
+                node.receiveMinerData(data3);
+                break;
+            
+            
+
         }
     }
 }

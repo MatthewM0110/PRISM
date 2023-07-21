@@ -41,7 +41,9 @@ public class Message implements Serializable {
         ALERT_WALLET,
         DELEGATE_WORK,
         COMPLETED_WORK,
-        RECEIVE_ANSWER_HASH
+        RECEIVE_ANSWER_HASH,
+        SEND_MINER_DATA,
+        RECEIVE_MINER_DATA
     }
 
     public Request getRequest(){

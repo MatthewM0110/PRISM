@@ -1,8 +1,10 @@
 package node.blockchain.PRISM;
 
+import java.io.Serializable;
+
 import node.communication.Address;
 
-public class MinerData {
+public class MinerData implements Serializable {
 
     private Address address;
 

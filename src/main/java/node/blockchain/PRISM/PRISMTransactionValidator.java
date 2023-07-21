@@ -30,12 +30,13 @@ public class PRISMTransactionValidator extends TransactionValidator {
      * @return
      */
     public HashMap<Address, RepData> calculateReputationsData(Block block, HashMap<Address, RepData> repData) {
-   
+
         PRISMBlock pBlock = (PRISMBlock) block;
         float minimumTime = Float.MAX_VALUE;
         for (Address address : pBlock.getMinerData().keySet()) {
             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
+        System.out.println("We found the min time: " + minimumTime);
         for (Address address : pBlock.getMinerData().keySet()) { // Get the miner data in that P rovenanceRecord
             // System.out.println(address.toString());
             // System.out.println(repData.keySet());
@@ -43,15 +44,15 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
             Address addressFound = null;
 
-            for(Address address2 : repData.keySet()){
-                if(address.equals(address2)){
-                    //System.out.println(address + " is equal to " + address2);
+            for (Address address2 : repData.keySet()) {
+                if (address.equals(address2)) {
+                    // System.out.println(address + " is equal to " + address2);
                     addressFound = address2;
-                }else{
-                    //System.out.println(address + " is not equal to " + address2);
+                } else {
+                    // System.out.println(address + " is not equal to " + address2);
                 }
             }
-        
+
             RepData rData = repData.get(addressFound);
 
             MinerData mData = pBlock.getMinerData().get(address);
@@ -67,48 +68,49 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
+            System.out.println("Reputation for:" + addressFound + "is " + rData.currentReputation);
             repData.put(addressFound, rData); // Update the reputation data for the miner
         }
 
         return repData; // Return the modified reputation data
     }
+
     public RepData calculateReputationData(Block block, Address targetAddress, HashMap<Address, RepData> repData) {
         PRISMBlock pBlock = (PRISMBlock) block;
         float minimumTime = Float.MAX_VALUE;
-    
+
         // calculate minimum time
         for (Address address : pBlock.getMinerData().keySet()) {
             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
         }
-    
+
         // Check if the targetAddress is present in the minerData
-        if(pBlock.getMinerData().containsKey(targetAddress)) {
+        if (pBlock.getMinerData().containsKey(targetAddress)) {
             RepData rData = repData.get(targetAddress);
             MinerData mData = pBlock.getMinerData().get(targetAddress);
-    
+
             rData.addBlocksParticipated();
-    
+
             if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
                 rData.addAccuracySummation(1);
                 rData.addAccuracyCount();
             } else {
                 rData.addAccuracySummation(-1);
             }
-    
+
             rData.addTimeSummation(minimumTime - mData.getTimestamp());
-    
+
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current reputation
-    
+
             repData.put(targetAddress, rData); // Update the reputation data for the targetAddress
         }
-    
+
         return repData.get(targetAddress); // Return the modified reputation data for targetAddress
     }
-    
 
     public float calculateReputation(RepData repData) {
         return (((alpha * repData.getAccurarySummation())
-                + (beta * repData.getTimeSummation())) 
+                + (beta * repData.getTimeSummation()))
                 + (gamma * ((float) repData.getAccuracyCount() / repData.blocksParticipated)))
                 / repData.blocksParticipated; // Calculate the reputation score and return it
     }
