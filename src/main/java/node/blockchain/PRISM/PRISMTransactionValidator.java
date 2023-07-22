@@ -83,6 +83,8 @@ public class PRISMTransactionValidator extends TransactionValidator {
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
 
+            System.out.println("Address " + addressFound + ": " + rData.getCurrentReputation());
+
             //System.out.println(addressFound + ": outputs:  " + (mData.getOutputHash() + " = " + (pBlock.getCorrectOutput()));
 
 
@@ -90,6 +92,9 @@ public class PRISMTransactionValidator extends TransactionValidator {
             // System.out.println("END Address" + addressFound + " ####################");
 
         }
+
+
+
 
         return repData; // Return the modified reputation data
     }

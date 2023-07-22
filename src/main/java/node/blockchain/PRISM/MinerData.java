@@ -47,7 +47,7 @@ public class MinerData implements Serializable {
     }
 
     public boolean equals(MinerData other){
-        if(this.timestamp == other.getTimestamp() && this.address == other.getAddress() && this.outputHash == other.getOutputHash()){
+        if(this.timestamp == other.getTimestamp() && this.address.equals(other.getAddress()) && this.outputHash.equals(other.getOutputHash())){
             return true;
         }
         return false;

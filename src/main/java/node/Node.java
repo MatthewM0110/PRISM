@@ -212,7 +212,7 @@ public class Node {
      */
     public void establishConnection(Address address) {
         synchronized (lock) {
-            localPeers.add(address);
+            if(!containsAddress(localPeers, address))localPeers.add(address);
         }
     }
 
@@ -454,17 +454,22 @@ public class Node {
 
     public void delegateWork() {
         synchronized (lock) {
-            stateChangeRequest(2);
-            minerData = new HashMap<Address, MinerData>();
+            minerData.clear();
 
             System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
                                                                     // counts.
             // System.out.println("I am quorum members delegating work");
-            for (Address address : localPeers) {
+            ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
+            System.out.println("Node " + myAddress.getPort() + ": lp: " + localPeers);
+            
+            
 
-                if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
-                    minerData.put(address, new MinerData(address, 0, "0"));
+
+            for (Address address : localPeers) {
+                
+                if (!containsAddress(quorum, address)) {
+                    //minerData.put(address, new MinerData(address, 0, "0"));
                     //System.out.println("Node " + myAddress + ": minerData as dekegating work: " + minerData.keySet());
                     long startTime = System.currentTimeMillis();
                     // if my neighbour is a quorum member, returndoWork
@@ -477,11 +482,10 @@ public class Node {
                         long endTime = System.currentTimeMillis();
 
                         hash = Hashing.getSHAString((String) reply.getMetadata());
-                        minerData.get(address).setOutputHash(hash);
-                        // System.out.println("got work back from " + address.toString());
-                        // Check if the hash is already in the map. If it is, increment its count.
-                        // Otherwise, add it to the map with a count of 1.
-                        minerData.get(address).setTimestamp(endTime - startTime);
+                        MinerData singleMinerData = new MinerData(address, endTime - startTime, hash);
+                        minerData.put(address, singleMinerData);
+                        System.out.println("Node " + myAddress.getPort() + ": delegated work to and put " + address);
+                        
                         if (minerOutput.containsKey(hash)) {
                             minerOutput.put(hash, minerOutput.get(hash) + 1);
                         } else {
@@ -501,9 +505,10 @@ public class Node {
                     popularHash = hash;
                 }
             }
-            System.out.println("Node " + myAddress + ": minerData after dekegating work: " + minerData.keySet());
+            System.out.println("Node " + myAddress + ": minerData after delegating work: " + minerData.keySet());
 
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
+            stateChangeRequest(2);
         }
     }
 
@@ -591,26 +596,38 @@ public class Node {
             i++;
 
             for (Address address : otherMinerData.keySet()) {
-                if (minerData.containsKey(address)) { // I have work from the same miner- lets pick one
-                    if (!minerData.get(address).equals(otherMinerData.get(address))) { // we DONT have the same work
+
+                ArrayList<Address> ourAddresses = new ArrayList<Address>(minerData.keySet());
+                
+                if (containsAddress(ourAddresses, address)) { // I have work from the same miner- lets pick one
+                    
+                    Address ourFoundAddress = null;
+                    for(Address ourAddress : ourAddresses){
+                        if((ourAddress).equals(address)){
+                            ourFoundAddress = ourAddress;
+                        }
+                    }
+                    
+                    if(ourFoundAddress == null)System.out.println("Node " + myAddress.getPort() + ": Our address is null");
+
+                    
+                    if (!minerData.get(ourFoundAddress).equals(otherMinerData.get(address))) { // we DONT have the same work
                                                                                          // from both of our miners,
                                                                                          // lets decice which one we
                                                                                          // need to keep based off
                                                                                          // timestamp size (WHAT IF
                                                                                          // TIMESTAMP IS EQUAL BUT
                                                                                          // ANSWER ISNT)
-                        if (minerData.get(address).getOutputHash() != otherMinerData.get(address).getOutputHash()) {
+                        if (minerData.get(ourFoundAddress).getOutputHash() != otherMinerData.get(address).getOutputHash()) {
                             // This miner gave two different, should we just disregard?
                         }
-                        if (minerData.get(address).getTimestamp() > otherMinerData.get(address).getTimestamp()) {
-                            minerData.remove(address);
-                            minerData.put(address, otherMinerData.get(address));
+                        if (minerData.get(ourFoundAddress).getTimestamp() > otherMinerData.get(address).getTimestamp()) {
+                            //minerData.remove(ourFoundAddress);
+                            minerData.put(ourFoundAddress, otherMinerData.get(address));
                         }
                     }
                 } else { // I don have work from the same miner- lets add it
-
                     minerData.put(address, otherMinerData.get(address));
-
                 }
 
             }

@@ -20,6 +20,13 @@ public class Address implements Serializable {
     }
 
     public boolean equals(Address address){
+        // A1: 8001, 127.0.0.1
+        // A1: 8001, 127.0.0.1
+        // A2: 8009, 127.0.0.1
+        // A1: 8001, 127.0.0.2
+        // A!: 8001, localhost
+        // System.out.println("Comparing ports " + this.port + " and " + address.getPort() + " Hosts: " 
+        // + this.host + " and " + address.getHost() + ". Result:" + (this.port == address.getPort() && this.host.equals(address.getHost())));
         return this.port == address.getPort() && this.host.equals(address.getHost());
     }
 
@@ -28,7 +35,7 @@ public class Address implements Serializable {
         return String.valueOf(port).concat("_" + host);
     }
 
-    public int hashCode(){
-        return port + host.hashCode();
-    }
+    // public int hashCode(){
+    //     return port + host.hashCode();
+    // }
 }
