@@ -464,6 +464,7 @@ public class Node {
 
                 if (!deriveQuorum(blockchain.getLast(), 0).contains(address)) {
                     minerData.put(address, new MinerData(address, 0, "0"));
+                    //System.out.println("Node " + myAddress + ": minerData as dekegating work: " + minerData.keySet());
                     long startTime = System.currentTimeMillis();
                     // if my neighbour is a quorum member, returndoWork
                     // System.out.println("send work to " + address.toString());
@@ -499,13 +500,25 @@ public class Node {
                     popularHash = hash;
                 }
             }
-            // System.out.println("send message in quorum. hash:" + popularHash);
+            System.out.println("Node " + myAddress + ": minerData after dekegating work: " + minerData.keySet());
 
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
+            stateChangeRequest(2);
         }
     }
 
     private ArrayList<String> quorumAnswerHashes = new ArrayList<String>();
+
+    public void recieveAnswerHashLocking(String hash){
+        while (state != 2) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        recieveAnswerHash(hash);
+    }
 
     public void recieveAnswerHash(String hash) {
         // System.out.println("Message recieved in quorum. hash:" + hash);
@@ -545,21 +558,35 @@ public class Node {
 
                 ProvenanceRecord pr = (ProvenanceRecord) prismTransaction.getRecord();
                 pr.setAnswerHash(popularHash);
-                System.out.println("Node " + myAddress.getPort() + ": about to send mempool");
+                //System.out.println("Node " + myAddress.getPort() + ": about to send mempool");
                 quorumAnswerHashes = new ArrayList<>();
 
                 // sendMempoolHashes();
                 // System.out.println("sending miner datas");
+                System.out.println("Node " + myAddress + ": minerData after getting answers: " + minerData.keySet());
                 sendOneWayMessageQuorum(new Message(Message.Request.RECEIVE_MINER_DATA, minerData));
+                stateChangeRequest(3);
             }
         }
     }
 
     HashMap<Address, MinerData> minerData = new HashMap<>(); //all Miner datas fro all quorum members
 
+    public void receiveMinerDataLocking(HashMap<Address, MinerData> otherMinerData){
+        while (state != 3) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        receiveMinerData(otherMinerData);
+    }
+
     public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
 
         synchronized (minerDataLock) {
+            System.out.println("Node " + myAddress.getPort() + ": oth: " + otherMinerData.keySet());
 
             for (Address address : otherMinerData.keySet()) {
 
@@ -587,64 +614,6 @@ public class Node {
 
             }
             sendMempoolHashes();
-            // Do something with mier datas
-            // Now we have a consistent miner datas
-
-            // for (Address address : otherMinerData.keySet()) {
-            // Address addressFound = address;
-            // Address addressFound2 = null;
-
-            // for (Address address2 : otherMinerData.keySet()) {
-            // if (address.equals(address2)) {
-            // // System.out.println(address + " is equal to " + address2);
-            // addressFound = address2;
-            // } else {
-            // // System.out.println(address + " is not equal to " + address2);
-            // }
-            // }
-            // for (Address address2 : myMinerData.keySet()) {
-            // if (addressFound.equals(address2)) {
-            // // System.out.println(address + " is equal to " + address2);
-            // addressFound2 = address2;
-            // } else {
-            // // System.out.println(address + " is not equal to " + address2);
-            // }
-            // }
-            // if (addressFound2 == null) {
-            // minerData.put(addressFound2, otherMinerData.get(addressFound));
-            // System.out.println("we didnt have this addresses miner data so we add it to
-            // ours");
-            // } else {
-
-            // // if (addressFound2.equals(addressFound)) {
-            // // System.out.println(
-            // // "The address are equal and we need to check if the minerData they contain
-            // is
-            // // equal");
-
-            // if (!otherMinerData.get(addressFound).equals(myMinerData.get(addressFound2)))
-            // {
-            // // These arent the same-- a miner submitted data to two quorum mmebers
-            // // we need to get the miner information that is the best, we should check for
-            // // correctness and then timeliness
-            // System.out.println("We have unequal miner data for the same address");
-            // if (myMinerData.get(addressFound2).getTimestamp() >
-            // otherMinerData.get(addressFound)
-            // .getTimestamp()) {
-            // System.out.println("We are picking the address with the smallest timestamp
-            // ");
-            // // we didnt have the shortest timestamp so we should get the other persons
-            // data
-            // minerData.put(addressFound2, otherMinerData.get(addressFound));
-            // }
-            // }
-            // }
-            // } else {
-            // System.out.println("we dont have this persons data, we are gonna add it to
-            // our minerData");
-            // minerData.put(addressFound, otherMinerData.get(addressFound));
-            // }
-
         }
 
     }
@@ -687,13 +656,15 @@ public class Node {
     public void sendMempoolHashes() {
         synchronized (memPoolLock) {
 
-            stateChangeRequest(2);
+            stateChangeRequest(4);
 
-            if (DEBUG_LEVEL == 1)
-                System.out.println("Node " + myAddress.getPort() + ": sendMempoolHashes invoked");
+            if (DEBUG_LEVEL == 1) System.out.println("Node " + myAddress.getPort() + ": sendMempoolHashes invoked");
 
             HashSet<String> keys = new HashSet<String>(mempool.keySet());
             ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
+
+            if (DEBUG_LEVEL == 1) System.out.println("Node " + myAddress.getPort() + ": sendMempoolHashes sending to " + quorum);
+
 
             for (Address quorumAddress : quorum) {
                 if (!myAddress.equals(quorumAddress)) {
@@ -704,9 +675,8 @@ public class Node {
                         Message messageReceived = mp.getMessage();
                         if (messageReceived.getRequest().name().equals("REQUEST_TRANSACTION")) {
                             ArrayList<String> hashesRequested = (ArrayList<String>) messageReceived.getMetadata();
-                            if (DEBUG_LEVEL == 1)
-                                System.out.println("Node " + myAddress.getPort()
-                                        + ": sendMempoolHashes: requested trans: " + hashesRequested);
+                            if (DEBUG_LEVEL == 1) System.out.println("Node " + myAddress.getPort()  + ": sendMempoolHashes: requested trans: " + hashesRequested);
+
                             ArrayList<Transaction> transactionsToSend = new ArrayList<>();
                             for (String hash : keys) {
                                 if (mempool.containsKey(hash)) {
@@ -719,6 +689,7 @@ public class Node {
                                 }
                             }
                             mp.getOout().writeObject(new Message(Message.Request.RECEIVE_MEMPOOL, transactionsToSend));
+                            if (DEBUG_LEVEL == 1) System.out.println("Node " + myAddress.getPort() + ": sendMempoolHashes sent");
                         }
                         mp.getSocket().close();
                     } catch (IOException e) {
@@ -732,7 +703,8 @@ public class Node {
     }
 
     public void receiveMempool(Set<String> keys, ObjectOutputStream oout, ObjectInputStream oin) {
-        while (state != 2) {
+        System.out.println("Node " + myAddress.getPort() + ": Waiting for state 4");
+        while (state != 4) {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -745,9 +717,10 @@ public class Node {
 
     public void resolveMempool(Set<String> keys, ObjectOutputStream oout, ObjectInputStream oin) {
         synchronized (memPoolRoundsLock) {
-            if (DEBUG_LEVEL == 1)
-                System.out.println("Node " + myAddress.getPort() + ": receiveMempool invoked");
             ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
+
+            if (DEBUG_LEVEL == 1)
+                System.out.println("Node " + myAddress.getPort() + ": receiveMempool invoked. Looking for " + (quorum.size() - 1));
             ArrayList<String> keysAbsent = new ArrayList<>();
             for (String key : keys) {
                 if (!mempool.containsKey(key)) {
@@ -788,6 +761,7 @@ public class Node {
                         "Node " + myAddress.getPort() + ": receiveMempool invoked: mempoolRounds: " + memPoolRounds);
             if (memPoolRounds == quorum.size() - 1) {
                 memPoolRounds = 0;
+                System.out.println("Node " + myAddress.getPort() + ": about to construct Block");
                 constructBlock();
             }
         }
@@ -797,7 +771,7 @@ public class Node {
         synchronized (memPoolLock) {
             if (DEBUG_LEVEL == 1)
                 System.out.println("Node " + myAddress.getPort() + ": constructBlock invoked");
-            stateChangeRequest(3);
+            stateChangeRequest(5);
 
             /* Make sure compiled transactions don't conflict */
             HashMap<String, Transaction> blockTransactions = new HashMap<>();
@@ -875,7 +849,7 @@ public class Node {
                         "Node " + myAddress.getPort() + ": 1st part receiveQuorumSignature invoked. state: " + state);
             }
 
-            while (state != 3) {
+            while (state != 5) {
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -931,7 +905,7 @@ public class Node {
             }
 
             // state = 4;
-            stateChangeRequest(4);
+            stateChangeRequest(6);
             ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
 
             if (!inQuorum()) {
@@ -1132,7 +1106,7 @@ public class Node {
             System.out.println("Validate skeleton: " + pBlock.getMinerData().keySet());
             addBlock(pBlock);
             sendSkeleton(blockSkeleton);
-            minerData.clear();
+            //minerData.clear();
 
         }
     }
@@ -1193,6 +1167,7 @@ public class Node {
     private void stateChangeRequest(int statetoChange) {
         synchronized (stateLock) {
             state = statetoChange;
+            System.out.println("Changed state to " + state);
         }
     }
 
@@ -1226,8 +1201,8 @@ public class Node {
         // pBlock.getMinerData().values()
         for (Address address : pBlock.getMinerData().keySet()) {
             MinerData printingMData = pBlock.getMinerData().get(address);
-            System.out.println("Miner: " + address + "- Time: " + printingMData.getTimestamp() + " Output: "
-                    + printingMData.getOutputHash());
+            // System.out.println("Miner: " + address + "- Time: " + printingMData.getTimestamp() + " Output: "
+            //         + printingMData.getOutputHash());
 
         }
 

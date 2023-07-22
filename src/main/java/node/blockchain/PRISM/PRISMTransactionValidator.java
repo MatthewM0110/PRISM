@@ -83,13 +83,9 @@ public class PRISMTransactionValidator extends TransactionValidator {
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
 
-            System.out.println(
-                    addressFound + ": Correct:  " + (mData.getOutputHash() + " = " + (pBlock.getCorrectOutput())) +
-                            " - My accuracy is:" + rData.getAccurarySummation() +
-                            " - I was right " + rData.getAccuracyCount() + "/ " + rData.getBlocksParticipated() +
-                            " - My rep is now " + rData.getCurrentReputation());
-            // System.out.println("Reputation for:" + addressFound + "is " +
-            // rData.currentReputation);
+            //System.out.println(addressFound + ": outputs:  " + (mData.getOutputHash() + " = " + (pBlock.getCorrectOutput()));
+
+
             repData.put(addressFound, rData); // Update the reputation data for the miner
             // System.out.println("END Address" + addressFound + " ####################");
 

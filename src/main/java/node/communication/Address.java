@@ -1,7 +1,6 @@
 package node.communication;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 public class Address implements Serializable {
     private final int port;
@@ -27,5 +26,9 @@ public class Address implements Serializable {
     @Override
     public String toString() {
         return String.valueOf(port).concat("_" + host);
+    }
+
+    public int hashCode(){
+        return port + host.hashCode();
     }
 }
