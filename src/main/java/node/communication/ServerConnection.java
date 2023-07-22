@@ -114,11 +114,11 @@ public class ServerConnection extends Thread {
                 break;
             case RECEIVE_ANSWER_HASH:
                 String data2 = (String) incomingMessage.getMetadata();
-                node.recieveAnswerHash(data2);
+                node.recieveAnswerHashLocking(data2); //recieveAnswerHashLocking
                 break;
             case RECEIVE_MINER_DATA:
                 HashMap<Address, MinerData> data3 = (HashMap<Address, MinerData>) incomingMessage.getMetadata();
-                node.receiveMinerData(data3);
+                node.receiveMinerDataLocking(data3);
                 break;
 
         }

@@ -454,9 +454,10 @@ public class Node {
 
     public void delegateWork() {
         synchronized (lock) {
+            stateChangeRequest(2);
             minerData = new HashMap<Address, MinerData>();
 
-            // System.out.println("Node " + myAddress.getPort() + ": delegating work");
+            System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
                                                                     // counts.
             // System.out.println("I am quorum members delegating work");
@@ -503,7 +504,6 @@ public class Node {
             System.out.println("Node " + myAddress + ": minerData after dekegating work: " + minerData.keySet());
 
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
-            stateChangeRequest(2);
         }
     }
 
@@ -583,13 +583,14 @@ public class Node {
         receiveMinerData(otherMinerData);
     }
 
-    public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
+    int i = 0;
 
+    public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
         synchronized (minerDataLock) {
             System.out.println("Node " + myAddress.getPort() + ": oth: " + otherMinerData.keySet());
+            i++;
 
             for (Address address : otherMinerData.keySet()) {
-
                 if (minerData.containsKey(address)) { // I have work from the same miner- lets pick one
                     if (!minerData.get(address).equals(otherMinerData.get(address))) { // we DONT have the same work
                                                                                          // from both of our miners,
@@ -613,9 +614,12 @@ public class Node {
                 }
 
             }
-            sendMempoolHashes();
-        }
 
+            if(i == deriveQuorum(blockchain.getLast(), 0).size() - 1){
+                sendMempoolHashes();
+                i = 0;
+            }
+        }
     }
 
     // System.out.println("sending mempool hashes ");
@@ -703,7 +707,7 @@ public class Node {
     }
 
     public void receiveMempool(Set<String> keys, ObjectOutputStream oout, ObjectInputStream oin) {
-        System.out.println("Node " + myAddress.getPort() + ": Waiting for state 4");
+        System.out.println("Node " + myAddress.getPort() + ": Waiting for state 4. State: " + state);
         while (state != 4) {
             try {
                 Thread.sleep(1000);
@@ -768,9 +772,10 @@ public class Node {
     }
 
     public void constructBlock() {
+        System.out.println("Node " + myAddress.getPort() + ": constructBlock locking");
+
         synchronized (memPoolLock) {
-            if (DEBUG_LEVEL == 1)
-                System.out.println("Node " + myAddress.getPort() + ": constructBlock invoked");
+            if (DEBUG_LEVEL == 1) System.out.println("Node " + myAddress.getPort() + ": constructBlock invoked");
             stateChangeRequest(5);
 
             /* Make sure compiled transactions don't conflict */
@@ -1167,7 +1172,7 @@ public class Node {
     private void stateChangeRequest(int statetoChange) {
         synchronized (stateLock) {
             state = statetoChange;
-            System.out.println("Changed state to " + state);
+            System.out.println("Node " + myAddress.getPort() + ": Changed state to " + state);
         }
     }
 
