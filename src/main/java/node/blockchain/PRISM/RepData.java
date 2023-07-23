@@ -59,6 +59,6 @@ public class RepData {
     }  
 
     public String toString() {
-        return "Blocks participated " + getBlocksParticipated(); 
+        return "-- Current Reputation | " + getCurrentReputation(); 
     }
 }
