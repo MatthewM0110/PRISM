@@ -33,7 +33,7 @@ public class PRISMClient {
     protected void submitProvenanceRecord(BufferedReader reader) throws IOException, InterruptedException {
         Random rand = new Random();
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 100; i++) {
             System.out.println("new TX");
             alertFullNode();
             System.out.println("Generating Provenance Record");
@@ -53,7 +53,7 @@ public class PRISMClient {
             System.out.println("PTX Information: " + ptX.getRecord().toString());
             submitProvenanceTransaction(ptX, fullNodes.get(0));
             System.out.println("PRISM Transaction Provenance Record Submitted");
-            Thread.sleep(10000);
+            Thread.sleep(50000);
         }
     }
 

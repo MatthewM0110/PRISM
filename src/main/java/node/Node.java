@@ -2,6 +2,7 @@ package node;
 
 import node.blockchain.*;
 import node.blockchain.PRISM.MinerData;
+import node.blockchain.PRISM.NodeStats;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
 import node.blockchain.PRISM.RepData;
@@ -184,6 +185,10 @@ public class Node {
                 }
             }
             addBlock(new PRISMBlock(new HashMap<String, Transaction>(), "000000", 0, minerData)); // Creating a blank
+            for (Address address : globalPeers) {
+                nodeStatsMap.put(address, new NodeStats());
+            }
+
             // genesis block
         }
     }
@@ -552,10 +557,10 @@ public class Node {
                     if (hashVotes.get(hashAnswer) == null) {
                         hashVotes.put(hashAnswer, 1);
                     } else {
-                        hashVotes.put(hash, hashVotes.get(hash) + 1);
+                        hashVotes.put(hashAnswer, hashVotes.get(hashAnswer) + 1);
                     }
                 }
-
+                
                 String popularHash = "";
 
                 for (String hashAnswer : hashVotes.keySet()) {
@@ -1221,6 +1226,8 @@ public class Node {
         }
     }
 
+    HashMap<Address, NodeStats> nodeStatsMap = new HashMap<>();
+
     /**
      * Adds a block
      * 
@@ -1255,7 +1262,6 @@ public class Node {
             // System.out.println("Miner: " + address + "- Time: " +
             // printingMData.getTimestamp() + " Output: "
             // + printingMData.getOutputHash());
-            
 
         }
 
@@ -1289,18 +1295,52 @@ public class Node {
             // PRISM
 
             txValidator.calculateReputationsData(pBlock, repData);
-            
+
             // System.out.println(myAddress + " | " + repData.toString());
+            // if (myAddress.getPort() == 8000) {
+            // repData.entrySet().stream()
+            // .sorted(Map.Entry.<Address, RepData>comparingByValue(
+            // Comparator.comparingDouble(RepData::getCurrentReputation)).reversed())
+            // .forEach(entry -> System.out
+            // .println(entry.getKey().getPort() + "|" + entry.getValue().toString()));
+
+            // }
+            // Only perform these operations if myAddress.getPort() == 8000
             if (myAddress.getPort() == 8000) {
-                repData.entrySet().stream()
-                        .sorted(Map.Entry.<Address, RepData>comparingByValue(
-                                Comparator.comparingDouble(RepData::getCurrentReputation)).reversed())
-                        .forEach(entry -> System.out
-                                .println(entry.getKey().getPort() + "|" + entry.getValue().toString()));
 
+                System.out.println(myAddress.getPort() + "im 8000");
+                File file = new File("quorumLocalFairness.csv");
+                if (file.length() == 0) {
+                    System.out.println("File length before writing: " + file.length());
+                    try (FileWriter fw = new FileWriter("quorumLocalFairness.csv", false)) {
+                        PrintWriter pw = new PrintWriter(fw);
+                        pw.println("Node ID, EligibleCount, Times Selected");
+                        pw.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("File length after writing: " + file.length());
+                } else {
+                    // If file is not empty, append the new data
+                    dataCollectionDeriveQuorum(pBlock, 0);
+                    System.out.println("Getting data");
+                    try (FileWriter fw = new FileWriter("quorumLocalFairness.csv", false)) {
+                        PrintWriter pw = new PrintWriter(fw);
+                        // Loop through the entries in nodeStatsMap
+                        for (Map.Entry<Address, NodeStats> entry : nodeStatsMap.entrySet()) {
+                            Address nodeAddress = entry.getKey();
+                            NodeStats stats = entry.getValue();
+                            System.out.println(stats);
+                            // Write the node's stats to the file
+                            pw.println(nodeAddress + "," + stats.getEligibleCount() + ","
+                                    + stats.getQuorumCount());
+                        }
+                        pw.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-
-            // System.out.println();
 
         }
 
@@ -1390,7 +1430,7 @@ public class Node {
                                 LinkedHashMap::new));
 
                 // Calculate top 30% limit
-                int eligibleSize = (int) Math.ceil(sortedMap.size() * 0.3);
+                int eligibleSize = (int) Math.ceil(sortedMap.size() * 0.2);
                 // Get the top 30% entries
                 List<Map.Entry<Address, RepData>> eligibleNodes = sortedMap.entrySet()
                         .stream()
@@ -1401,12 +1441,13 @@ public class Node {
                 Collections.shuffle(eligibleNodes, random);
 
                 // Calculate top 10% limit of eligible nodes
-                int quorumSize = (int) Math.ceil(eligibleNodes.size() * 0.2);
+                int quorumSize = (int) Math.ceil(eligibleNodes.size() * 0.5);
 
                 // Add these to the quorum
                 for (int i = 0; i < quorumSize; i++) {
                     quorum.add(eligibleNodes.get(i).getKey());
                 }
+                // Only perform these operations if myAddress.getPort() == 8000
 
                 // System.out.println("I'm node " + myAddress + " and I think the quorum
                 // consists of " + quorum.toString());
@@ -1418,6 +1459,89 @@ public class Node {
             }
         }
         return null;
+    }
+
+    public void dataCollectionDeriveQuorum(Block block, int nonce) {
+        // System.out.println("Deriving quorum for block " + block.getBlockId());
+        String blockHash;
+
+        if (block != null) {
+
+            ArrayList<Address> quorum = new ArrayList<>();
+            try {
+                blockHash = Hashing.getBlockHash(block, nonce);
+
+                BigInteger bigInt = new BigInteger(blockHash, 16);
+                bigInt = bigInt.mod(BigInteger.valueOf(globalPeers.size()));
+                int seed = bigInt.intValue();
+                Random random = new Random(seed);
+
+                // Print repData for debugging
+
+                // Sort the repData map by currentReputation values in descending order
+                LinkedHashMap<Address, RepData> sortedMap = globalPeers.stream()
+                        .sorted(Comparator
+                                .comparing(a -> repData.containsKey(a) ? repData.get(a).getCurrentReputation() : 0)
+                                .reversed())
+                        .collect(Collectors.toMap(
+                                Function.identity(),
+                                a -> repData.containsKey(a) ? repData.get(a) : new RepData(),
+                                (e1, e2) -> e1,
+                                LinkedHashMap::new));
+
+                // Calculate top 30% limit
+                int eligibleSize = (int) Math.ceil(sortedMap.size() * 0.2);
+                // Get the top 30% entries
+                List<Map.Entry<Address, RepData>> eligibleNodes = sortedMap.entrySet()
+                        .stream()
+                        .limit(eligibleSize)
+                        .collect(Collectors.toList());
+
+                // Loop through eligible nodes
+                for (Map.Entry<Address, RepData> nodeEntry : eligibleNodes) {
+                    Address nodeAddress = nodeEntry.getKey();
+
+                    // If the node isn't already in the map, add it
+                    if (!nodeStatsMap.containsKey(nodeAddress)) {
+                        nodeStatsMap.put(nodeAddress, new NodeStats());
+                    }
+
+                    // Increment the eligible count for this node
+                    nodeStatsMap.get(nodeAddress).incrementEligibleCount();
+                }
+
+                // Shuffle the list
+                Collections.shuffle(eligibleNodes, random);
+
+                // Calculate top 10% limit of eligible nodes
+                int quorumSize = (int) Math.ceil(eligibleNodes.size() * 0.5);
+
+                // Add these to the quorum
+                for (int i = 0; i < quorumSize; i++) {
+                    quorum.add(eligibleNodes.get(i).getKey());
+                }
+                // Only perform these operations if myAddress.getPort() == 8000
+
+                // System.out.println("I'm node " + myAddress + " and I think the quorum
+                // consists of " + quorum.toString());
+                // Only perform these operations if myAddress.getPort() == 8000
+
+                // Loop through nodes in quorum
+                for (Address nodeAddress : quorum) {
+                    // If the node isn't already in the map, add it
+                    if (!nodeStatsMap.containsKey(nodeAddress)) {
+                        nodeStatsMap.put(nodeAddress, new NodeStats());
+                    }
+
+                    // Increment the quorum count for this node
+                    nodeStatsMap.get(nodeAddress).incrementQuorumCount();
+                }
+            } catch (NoSuchAlgorithmException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
     }
 
     private HashMap<String, Address> accountsToAlert;
