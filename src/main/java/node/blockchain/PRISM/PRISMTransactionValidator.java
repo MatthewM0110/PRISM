@@ -43,7 +43,12 @@ public class PRISMTransactionValidator extends TransactionValidator {
         // System.out.println("The correct output was " + pBlock.correctOutput);
 
         for (Address address : pBlock.getMinerData().keySet()) {
-            minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
+            if(pBlock.getMinerData().get(address).getOutputHash().equals(pBlock.getCorrectOutput())){
+                
+             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
+
+            }
+
         }
         // System.out.println("We found the min time: " + minimumTime);
         for (Address address : pBlock.getMinerData().keySet()) { // Get the miner data in that P rovenanceRecord
@@ -77,23 +82,20 @@ public class PRISMTransactionValidator extends TransactionValidator {
             } else {
                 rData.addAccuracySummation(-1);
             }
-
+           // System.out.println("Shortest time was " + minimumTime  + " and " + addressFound + "was  " + mData.getTimestamp());
             rData.addTimeSummation(mData.getTimestamp() - minimumTime);
 
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
                                                                     // reputation
 
-           // System.out.println("Address " + addressFound + ": " + rData.getCurrentReputation() + "\t" + addressFound + ": outputs:  " + (mData.getOutputHash() + " = " + (pBlock.getCorrectOutput())));
-
-
+            // System.out.println("Address " + addressFound + ": " +
+            // rData.getCurrentReputation() + "\t" + addressFound + ": outputs: " +
+            // (mData.getOutputHash() + " = " + (pBlock.getCorrectOutput())));
 
             repData.put(addressFound, rData); // Update the reputation data for the miner
             // System.out.println("END Address" + addressFound + " ####################");
 
         }
-
-
-
 
         return repData; // Return the modified reputation data
     }
@@ -114,14 +116,15 @@ public class PRISMTransactionValidator extends TransactionValidator {
 
             rData.addBlocksParticipated();
 
-            if (mData.getOutputHash() == pBlock.getCorrectOutput()) {
-                rData.addAccuracySummation(1);
+            if (mData.getOutputHash().equals(pBlock.getCorrectOutput())) {
+                rData.addAccuracySummation(1f);
                 rData.addAccuracyCount();
             } else {
-                rData.addAccuracySummation(-1);
+                rData.addAccuracySummation(-1f);
             }
 
-            rData.addTimeSummation(minimumTime - mData.getTimestamp());
+            rData.addTimeSummation(mData.getTimestamp() - minimumTime  );
+            //System.out.println(mData.getTimestamp() + " & " + minimumTime );
 
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current reputation
 
