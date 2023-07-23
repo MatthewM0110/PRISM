@@ -16,7 +16,7 @@ public class MinerData implements Serializable {
         this.address = address;
     }
 
-    private long timestamp; // assuming this is a Unix timestamp
+    private float timestamp; // assuming this is a Unix timestamp
     private String outputHash;
 
     public String getOutputHash() {
@@ -27,27 +27,28 @@ public class MinerData implements Serializable {
         this.outputHash = outputHash;
     }
 
-    public MinerData(Address address, long timestamp, String outputHash) {
+    public MinerData(Address address, float timestamp, String outputHash) {
         this.address = address;
         this.timestamp = timestamp;
         this.outputHash = outputHash;
     }
 
-    public long getTimestamp() {
+    public float getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(long timestamp) {
+    public void setTimestamp(float timestamp) {
         this.timestamp = timestamp;
     }
 
-    public String toString(){
+    public String toString() {
         return "Address: " + address + ", timestamp: " + timestamp + ", outputHash: " + outputHash;
 
     }
 
-    public boolean equals(MinerData other){
-        if(this.timestamp == other.getTimestamp() && this.address.equals(other.getAddress()) && this.outputHash.equals(other.getOutputHash())){
+    public boolean equals(MinerData other) {
+        if (this.timestamp == other.getTimestamp() && this.address.equals(other.getAddress())
+                && this.outputHash.equals(other.getOutputHash())) {
             return true;
         }
         return false;

@@ -59,6 +59,6 @@ public class RepData {
     }  
 
     public String toString() {
-        return "-- Current Reputation | " + getCurrentReputation(); 
+        return Float.toString(getCurrentReputation()); 
     }
 }

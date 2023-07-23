@@ -156,6 +156,7 @@ public class Node {
      */
     public void initializeBlockchain() {
         blockchain = new LinkedList<Block>();
+        minerData = new HashMap<Address, MinerData>();
 
         if (USE.equals("Defi")) {
             accounts = new HashMap<>();
@@ -435,8 +436,8 @@ public class Node {
                     oout.writeObject(new Message(Message.Request.PING));
                     oout.flush();
                     quorumReadyVotes++;
-                    System.out.println("Node " + myAddress.getPort() + ": has " + quorumReadyVotes + " votes. Needs: "
-                            + (quorum.size() - 1));
+                //    System.out.println("Node " + myAddress.getPort() + ": has " + quorumReadyVotes + " votes. Needs: "
+                         //   + (quorum.size() - 1));
                     if (quorumReadyVotes == quorum.size() - 1) {
                         quorumReadyVotes = 0;
                         delegateWork();
@@ -456,7 +457,6 @@ public class Node {
 
     public void delegateWork() {
         synchronized (lock) {
-            minerData.clear();
 
             // System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
@@ -482,7 +482,9 @@ public class Node {
                         long endTime = System.currentTimeMillis();
 
                         hash = Hashing.getSHAString((String) reply.getMetadata());
-                        MinerData singleMinerData = new MinerData(address, endTime - startTime, hash);
+                        float time = (endTime - startTime);
+                        MinerData singleMinerData = new MinerData(address, time, hash);
+                     //   System.out.println(myAddress + " Single Miner Data :  " + singleMinerData);
                         minerData.put(address, singleMinerData);
                         // System.out.println("Node " + myAddress.getPort() + ": delegated work to and
                         // put " + address);
@@ -573,13 +575,16 @@ public class Node {
                 // System.out.println("sending miner datas");
                 // System.out.println("Node " + myAddress + ": minerData after getting answers:
                 // " + minerData.keySet());
+
                 sendOneWayMessageQuorum(new Message(Message.Request.RECEIVE_MINER_DATA, minerData));
                 stateChangeRequest(3);
             }
         }
     }
 
-    HashMap<Address, MinerData> minerData = new HashMap<>(); // all Miner datas fro all quorum members
+    int i = 0;
+
+    HashMap<Address, MinerData> minerData; // all Miner datas fro all quorum members
 
     public void receiveMinerDataLocking(HashMap<Address, MinerData> otherMinerData) {
         while (state != 3) {
@@ -591,8 +596,6 @@ public class Node {
         }
         receiveMinerData(otherMinerData);
     }
-
-    int i = 0;
 
     public void receiveMinerData(HashMap<Address, MinerData> otherMinerData) {
         synchronized (minerDataLock) {
@@ -624,21 +627,25 @@ public class Node {
                         // timestamp size (WHAT IF
                         // TIMESTAMP IS EQUAL BUT
                         // ANSWER ISNT)
-                        if (minerData.get(ourFoundAddress).getOutputHash() != otherMinerData.get(address)
-                                .getOutputHash()) {
+                        if (!minerData.get(ourFoundAddress).getOutputHash().equals(otherMinerData.get(address)
+                                .getOutputHash())) {
+                            System.out.println("A MINER GAVE TWO DIFFERENT OUTPUTS");
                             // This miner gave two different, should we just disregard?
                         }
                         if (minerData.get(ourFoundAddress).getTimestamp() > otherMinerData.get(address)
                                 .getTimestamp()) {
-                            // minerData.remove(ourFoundAddress);
+
                             minerData.put(ourFoundAddress, otherMinerData.get(address));
                         }
                     }
-                } else { // I don have work from the same miner- lets add it
+                } else {
+                    // I don have work from the same miner- lets add it
                     minerData.put(address, otherMinerData.get(address));
+
                 }
 
             }
+      //      System.out.println(myAddress + ": MY miner data after aggregation" + minerData.values());
 
             if (i == deriveQuorum(blockchain.getLast(), 0).size() - 1) {
                 sendMempoolHashes();
@@ -737,7 +744,7 @@ public class Node {
     }
 
     public void receiveMempool(Set<String> keys, ObjectOutputStream oout, ObjectInputStream oin) {
-        System.out.println("Node " + myAddress.getPort() + ": Waiting for state 4. State: " + state);
+       // System.out.println("Node " + myAddress.getPort() + ": Waiting for state 4. State: " + state);
         while (state != 4) {
             try {
                 Thread.sleep(1000);
@@ -796,15 +803,14 @@ public class Node {
                         "Node " + myAddress.getPort() + ": receiveMempool invoked: mempoolRounds: " + memPoolRounds);
             if (memPoolRounds == quorum.size() - 1) {
                 memPoolRounds = 0;
-                System.out.println("Node " + myAddress.getPort() + ": about to construct Block");
+                //System.out.println("Node " + myAddress.getPort() + ": about to construct Block");
                 constructBlock();
             }
         }
     }
 
     public void constructBlock() {
-        // System.out.println("Node " + myAddress.getPort() + ": constructBlock
-        // locking");
+       // System.out.println("Node " + myAddress.getPort() + ": constructBlock locking");
 
         synchronized (memPoolLock) {
             if (DEBUG_LEVEL == 1)
@@ -813,10 +819,6 @@ public class Node {
 
             /* Make sure compiled transactions don't conflict */
             HashMap<String, Transaction> blockTransactions = new HashMap<>();
-
-            PRISMTransactionValidator tv = null;
-
-            tv = new PRISMTransactionValidator();
 
             for (String key : mempool.keySet()) {
                 Transaction transaction = mempool.get(key);
@@ -830,29 +832,22 @@ public class Node {
                 } else if (USE.equals("PRISM")) {
                     validatorObjects[0] = transaction;
                 }
-                tv.validate(validatorObjects, repData);
+                txValidator.validate(validatorObjects, repData);
                 blockTransactions.put(key, transaction);
             }
 
             try {
-                if (USE.equals("Defi")) {
-                    quorumBlock = new DefiBlock(blockTransactions,
-                            getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size());
-                } else if (USE.equals("HC")) {
-
-                    // Room to enable another use case
-                    quorumBlock = new HCBlock(blockTransactions,
-                            getBlockHash(blockchain.getLast(), 0),
-                            blockchain.size());
-                } else if (USE.equals("PRISM")) {
+                if (USE.equals("PRISM")) {
                     // How to do for multiple block types?
+
                     quorumBlock = new PRISMBlock(blockTransactions,
                             getBlockHash(blockchain.getLast(), 0),
                             blockchain.size(), minerData);
+
                 }
 
             } catch (NoSuchAlgorithmException e) {
+
                 throw new RuntimeException(e);
             }
 
@@ -997,8 +992,12 @@ public class Node {
             if (hashVotes.get(winningHash) == quorum.size()) { // This needs to be changed from quorum size to most
                                                                // popular quorum vote
                 if (quorumBlockHash.equals(winningHash)) {
+
                     sendSkeleton();
-                    addBlock(quorumBlock);
+                   // System.out.println("Quorum" + myAddress + minerData.values());
+                    quorumBlock.setMinerData(minerData);
+                    addBlock(quorumBlock); // HERE WHERE WE ADD QUORUM BLOCKS
+
                     if (quorumBlock == null) {
                         System.out.println("Node " + myAddress.getPort() + ": tallyQuorumSigs quorum null");
 
@@ -1047,8 +1046,6 @@ public class Node {
             for (Address address : localPeers) {
                 Messager.sendOneWayMessage(address, new Message(Message.Request.RECEIVE_SKELETON, skeleton), myAddress);
             }
-
-            minerData.clear();
 
         }
     }
@@ -1231,14 +1228,14 @@ public class Node {
         MerkleTree mt = new MerkleTree(txList);
         if (mt.getRootNode() != null)
             block.setMerkleRootHash(mt.getRootNode().getHash());
-
-        blockchain.add(block);
         PRISMBlock pBlock = (PRISMBlock) block;
+        blockchain.add(pBlock);
+
         // Maybe we need to set the miner data here instead?
 
         //// PRISM setting miner data of added block
-        System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()
-                + " myMinerData: ");
+       // System.out.println("Node " + myAddress.getPort() + ": " + chainString(blockchain) + " MP: " + mempool.values()
+        //        + " myMinerData: ");
         // pBlock.getMinerData().values()
         for (Address address : pBlock.getMinerData().keySet()) {
             MinerData printingMData = pBlock.getMinerData().get(address);
@@ -1276,8 +1273,13 @@ public class Node {
             }
         } else {
             // PRISM
-            PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
-            txValidator.calculateReputationsData(block, repData);
+
+            txValidator.calculateReputationsData(pBlock, repData);
+
+            System.out.println( myAddress + " | " + repData.toString());
+
+            // System.out.println();
+
 
         }
 
@@ -1296,6 +1298,7 @@ public class Node {
                     e.printStackTrace();
                 }
             }
+
             sendQuorumReady();
         }
     }
@@ -1353,7 +1356,6 @@ public class Node {
                 Random random = new Random(seed);
 
                 // Print repData for debugging
-                System.out.println("I'm node " + myAddress + " and my repData is " + repData.toString());
 
                 // Sort the repData map by currentReputation values in descending order
                 LinkedHashMap<Address, RepData> sortedMap = globalPeers.stream()
@@ -1385,8 +1387,8 @@ public class Node {
                     quorum.add(eligibleNodes.get(i).getKey());
                 }
 
-                System.out
-                        .println("I'm node " + myAddress + " and I think the quorum consists of " + quorum.toString());
+                // System.out.println("I'm node " + myAddress + " and I think the quorum
+                // consists of " + quorum.toString());
 
                 return quorum;
 
@@ -1489,11 +1491,12 @@ public class Node {
     private LinkedList<Block> blockchain;
     public final Address myAddress;
     private ServerSocket ss;
-    private Block quorumBlock;
+    private PRISMBlock quorumBlock;
     private PrivateKey privateKey;
     private int state;
     public final String USE;
 
+    private PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
     public HashMap<Address, RepData> repData = new HashMap<Address, RepData>();
     private float accuracyPercent; // value between 0 and 1 that determines how likely this node is to get a
                                    // correct answer as a miner.
