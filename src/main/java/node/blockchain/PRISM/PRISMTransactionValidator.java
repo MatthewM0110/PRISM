@@ -43,9 +43,9 @@ public class PRISMTransactionValidator extends TransactionValidator {
         // System.out.println("The correct output was " + pBlock.correctOutput);
 
         for (Address address : pBlock.getMinerData().keySet()) {
-            if(pBlock.getMinerData().get(address).getOutputHash().equals(pBlock.getCorrectOutput())){
-                
-             minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
+            if (pBlock.getMinerData().get(address).getOutputHash().equals(pBlock.getCorrectOutput())) {
+
+                minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
 
             }
 
@@ -82,7 +82,8 @@ public class PRISMTransactionValidator extends TransactionValidator {
             } else {
                 rData.addAccuracySummation(-1);
             }
-           // System.out.println("Shortest time was " + minimumTime  + " and " + addressFound + "was  " + mData.getTimestamp());
+            // System.out.println("Shortest time was " + minimumTime + " and " +
+            // addressFound + "was " + mData.getTimestamp());
             rData.addTimeSummation(mData.getTimestamp() - minimumTime);
 
             rData.setCurrentReputation(calculateReputation(rData)); // Calculate current
@@ -100,46 +101,17 @@ public class PRISMTransactionValidator extends TransactionValidator {
         return repData; // Return the modified reputation data
     }
 
-    public RepData calculateReputationData(Block block, Address targetAddress, HashMap<Address, RepData> repData) {
-        PRISMBlock pBlock = (PRISMBlock) block;
-        float minimumTime = Float.MAX_VALUE;
-
-        // calculate minimum time
-        for (Address address : pBlock.getMinerData().keySet()) {
-            minimumTime = Math.min(minimumTime, pBlock.getMinerData().get(address).getTimestamp());
-        }
-
-        // Check if the targetAddress is present in the minerData
-        if (pBlock.getMinerData().containsKey(targetAddress)) {
-            RepData rData = repData.get(targetAddress);
-            MinerData mData = pBlock.getMinerData().get(targetAddress);
-
-            rData.addBlocksParticipated();
-
-            if (mData.getOutputHash().equals(pBlock.getCorrectOutput())) {
-                rData.addAccuracySummation(1f);
-                rData.addAccuracyCount();
-            } else {
-                rData.addAccuracySummation(-1f);
-            }
-
-            rData.addTimeSummation(mData.getTimestamp() - minimumTime  );
-            //System.out.println(mData.getTimestamp() + " & " + minimumTime );
-
-            rData.setCurrentReputation(calculateReputation(rData)); // Calculate current reputation
-
-            repData.put(targetAddress, rData); // Update the reputation data for the targetAddress
-        }
-
-        return repData.get(targetAddress); // Return the modified reputation data for targetAddress
-    }
-
     public float calculateReputation(RepData repData) {
-        return (((alpha * repData.getAccurarySummation())
-                + (beta * repData.getTimeSummation())) *
+        return ((alpha * repData.getAccurarySummation())
+                + (beta * repData.getTimeSummation()))
 
-                (gamma * ((float) repData.getAccuracyCount() / repData.blocksParticipated)
-                        / repData.blocksParticipated)); // Calculate the reputation score and return it
+                *
+                (gamma * ((float) repData.getAccuracyCount() / repData.getBlocksParticipated())
+                        / (repData.getBlocksParticipated()));
+
+        // reputation score
+        // and return it
+
     }
 
     public boolean validate(Object[] objects, HashMap<Address, RepData> repData) {

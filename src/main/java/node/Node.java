@@ -488,7 +488,6 @@ public class Node {
                     // minerData.put(address, new MinerData(address, 0, "0"));
                     // System.out.println("Node " + myAddress + ": minerData as dekegating work: " +
                     // minerData.keySet());
-                    float startTime = (float) System.currentTimeMillis();
 
                     // if my neighbour is a quorum member, returndoWork
                     // System.out.println("send work to " + address.toString());
@@ -497,9 +496,9 @@ public class Node {
                     String hash = null;
 
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
-                        float endTime = (float) System.currentTimeMillis();
 
-                        hash = Hashing.getSHAString((String) reply.getMetadata());
+                        hash = reply.getMetadata().toString();
+                        System.out.println("output: "+ hash);
                         // float time = (endTime - startTime);
                         float time = ThreadLocalRandom.current().nextFloat() * 5.0f;
 
@@ -588,6 +587,7 @@ public class Node {
                 }
 
                 ProvenanceRecord pr = (ProvenanceRecord) prismTransaction.getRecord();
+                System.out.println("popupar answer is " + popularHash);
                 pr.setAnswerHash(popularHash);
                 // System.out.println("Node " + myAddress.getPort() + ": about to send
                 // mempool");
@@ -679,8 +679,8 @@ public class Node {
                 }
 
             }
-            System.out.println(myAddress + ": MY miner data after aggregation" +
-                    minerData.values());
+            // System.out.println(myAddress + ": MY miner data after aggregation" +
+            // minerData.values());
 
             if (i == deriveQuorum(blockchain.getLast(), 0).size() - 1) {
                 sendMempoolHashes();
@@ -707,21 +707,14 @@ public class Node {
         // PRISMtx.getUID. Otherwise, it returns a random hash
         String hash = null;
 
-        // one
-        String address = String.valueOf(myAddress.getPort());
-        String hashString = Hashing.getSHAString(address);
-        BigInteger hashNumber = new BigInteger(hashString, 16); // Convert hexadecimal string to BigInteger
-
-        Random rand = new Random(hashNumber.longValue());
-        float accuracyPercent = rand.nextFloat();
-        System.out.println(myAddress.getPort() + " : " + accuracyPercent);
-
-        if (Math.random() < accuracyPercent && PRISMtx != null) {
-            hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
+        Random random = new Random();
+        int value = random.nextInt(1,100);
+        if (value < 40 ) {
+            hash = Hashing.getSHAString(String.valueOf(random.nextInt(0, 500)));
         } else {
-            hash = Hashing.getSHAString(String.valueOf(Math.random()));
-            // assuming you have a method to generate random hashes
 
+            hash = "aaa"; // This is in place of a true answer's hash
+            // assuming you have a method to generate random hashes
         }
         // Do work
 
@@ -1347,110 +1340,101 @@ public class Node {
         //// chainString(blockchain) + " MP: " + mempool.values()
         // + " myMinerData: ");
         // pBlock.getMinerData().values()
-        for (Address address : pBlock.getMinerData().keySet()) {
-            MinerData printingMData = pBlock.getMinerData().get(address);
-            // System.out.println("Miner: " + address + "- Time: " +
-            // printingMData.getTimestamp() + " Output: "
-            // + printingMData.getOutputHash());
+        // for (Address address : pBlock.getMinerData().keySet()) {
+        // MinerData printingMData = pBlock.getMinerData().get(address);
+        // // System.out.println("Miner: " + address + "- Time: " +
+        // // printingMData.getTimestamp() + " Output: "
+        // // + printingMData.getOutputHash());
+
+        // }
+
+        // PRISM
+        if (myAddress.getPort() == 8000) {
+
+            for (Address address : pBlock.getMinerData().keySet()) {
+                System.out.println("Miner Data  " + pBlock.getMinerData().get(address).toString());
+            }
 
         }
+        txValidator.calculateReputationsData(pBlock, repData);
 
-        if (USE.equals("Defi")) {
-            HashMap<String, DefiTransaction> defiTxMap = new HashMap<>();
+        // System.out.println(myAddress.getPort() + " :" +
+        // pBlock.getMinerData().values());
+        // System.out.println(myAddress + " | " + repData.toString());
+        // if (myAddress.getPort() == 8000) {
+        // repData.entrySet().stream()
+        // .sorted(Map.Entry.<Address, RepData>comparingByValue(
+        // Comparator.comparingDouble(RepData::getCurrentReputation)).reversed())
+        // .forEach(entry -> System.out
+        // .println(entry.getKey().getPort() + "|" + entry.getValue().toString()));
 
-            for (String key : keys) {
-                DefiTransaction transactionInList = (DefiTransaction) txMap.get(key);
-                defiTxMap.put(key, transactionInList);
+        // Only perform these operations if myAddress.getPort() == 8000
+
+        if (myAddress.getPort() == 8000) {
+            // Messager.sendOneWayMessage(myAddress,
+            // new Message(Message.Request.ALERT_WALLET),
+            // myAddress);
+            for (Address address : repData.keySet()) {
+
+                System.out.println(address.getPort() + " " + repData.get(address).toString());
             }
-
-            // DefiTransactionValidator.updateAccounts(defiTxMap, accounts);
-
-            synchronized (accountsLock) {
-                for (String account : accountsToAlert.keySet()) {
-                    // System.out.println(account);
-
-                    // System.out.println("sent update");
-
+            File file = new File("quorumLocalFairness.csv");
+            if (file.length() == 0) {
+                // System.out.println("File length before writing: " + file.length());
+                try (FileWriter fw = new FileWriter("quorumLocalFairness.csv", false)) {
+                    PrintWriter pw = new PrintWriter(fw);
+                    pw.println("Node ID, Eligibility, Frequency");
+                    pw.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            }
-        } else {
-            // PRISM
+                // System.out.println("File length after writing: " + file.length());
+            } else {
+                // If file is not empty, append the new data
+                dataCollectionDeriveQuorum(pBlock, 0);
+                // System.out.println("Getting data");
+                try (FileWriter fw = new FileWriter("quorumLocalFairness.csv", false)) {
+                    PrintWriter pw = new PrintWriter(fw);
+                    pw.println("Node,Eligibility,Frequency");
 
-            txValidator.calculateReputationsData(pBlock, repData);
-            // System.out.println(myAddress.getPort() + " :" +
-            // pBlock.getMinerData().values());
-            // System.out.println(myAddress + " | " + repData.toString());
-            // if (myAddress.getPort() == 8000) {
-            // repData.entrySet().stream()
-            // .sorted(Map.Entry.<Address, RepData>comparingByValue(
-            // Comparator.comparingDouble(RepData::getCurrentReputation)).reversed())
-            // .forEach(entry -> System.out
-            // .println(entry.getKey().getPort() + "|" + entry.getValue().toString()));
-
-            // Only perform these operations if myAddress.getPort() == 8000
-
-            if (myAddress.getPort() == 8000) {
-                // Messager.sendOneWayMessage(myAddress,
-                // new Message(Message.Request.ALERT_WALLET),
-                // myAddress);
-
-                File file = new File("quorumLocalFairness.csv");
-                if (file.length() == 0) {
-                    // System.out.println("File length before writing: " + file.length());
-                    try (FileWriter fw = new FileWriter("quorumLocalFairness.csv", false)) {
-                        PrintWriter pw = new PrintWriter(fw);
-                        pw.println("Node ID, Eligibility, Frequency");
-                        pw.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    // System.out.println("File length after writing: " + file.length());
-                } else {
-                    // If file is not empty, append the new data
-                    dataCollectionDeriveQuorum(pBlock, 0);
-                    // System.out.println("Getting data");
-                    try (FileWriter fw = new FileWriter("quorumLocalFairness.csv", false)) {
-                        PrintWriter pw = new PrintWriter(fw);
-                        pw.println("Node,Eligibility,Frequency");
-
-                        // Create a TreeMap with custom comparator for sorting by Address in descending
-                        // order
-                        TreeMap<Address, NodeStats> sortedMap = new TreeMap<>(new Comparator<Address>() {
-                            @Override
-                            public int compare(Address a1, Address a2) {
-                                return a2.getPort() - a1.getPort(); // descending order
-                            }
-                        });
-
-                        // Put all entries from nodeStatsMap into sortedMap
-                        sortedMap.putAll(nodeStatsMap);
-
-                        // Loop through the entries in sortedMap
-                        for (Map.Entry<Address, NodeStats> entry : sortedMap.entrySet()) {
-                            Address nodeAddress = entry.getKey();
-                            NodeStats stats = entry.getValue();
-                            // System.out.println(stats);
-
-                            // Write the node's stats to the file
-                            pw.println(nodeAddress.getPort() + "," + stats.getEligibleCount() + ","
-                                    + stats.getQuorumCount());
+                    // Create a TreeMap with custom comparator for sorting by Address in descending
+                    // order
+                    TreeMap<Address, NodeStats> sortedMap = new TreeMap<>(new Comparator<Address>() {
+                        @Override
+                        public int compare(Address a1, Address a2) {
+                            return a2.getPort() - a1.getPort(); // descending order
                         }
-                        pw.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    });
 
+                    // Put all entries from nodeStatsMap into sortedMap
+                    sortedMap.putAll(nodeStatsMap);
+
+                    // Loop through the entries in sortedMap
+                    for (Map.Entry<Address, NodeStats> entry : sortedMap.entrySet()) {
+                        Address nodeAddress = entry.getKey();
+                        NodeStats stats = entry.getValue();
+                        // System.out.println(stats);
+
+                        // Write the node's stats to the file
+                        pw.println(nodeAddress.getPort() + "," + stats.getEligibleCount() + ","
+                                + stats.getQuorumCount());
+                    }
+                    pw.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
 
             }
-            // Miner Data collector
 
         }
+        // Miner Data collector
+
         ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
 
         String fileName = myAddress.toString();
         // Create or append to the file
-        try (FileWriter fw = new FileWriter("data/" + fileName + ".csv", false);
+        try (
+                FileWriter fw = new FileWriter("data/" + fileName + ".csv", false);
                 PrintWriter pw = new PrintWriter(fw)) {
 
             // Get the quorum
@@ -1809,7 +1793,7 @@ public class Node {
 
     private PRISMTransactionValidator txValidator = new PRISMTransactionValidator();
     public HashMap<Address, RepData> repData = new HashMap<Address, RepData>();
-    private float accuracyPercent;// value between 0 and 1 that determines how likely this node
-                                  // is to get a
+    private float accuracyPercent = (float) Math.random();// value between 0 and 1 that determines how likely this node
+    // is to get a
     // correct answer as a miner.
 }

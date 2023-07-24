@@ -34,28 +34,30 @@ public class PRISMBlock extends Block {
 
     public void setMinerData(HashMap<Address, MinerData> minerData) {
         this.minerData = minerData;
-
-        /* Looping through minerData to find the most popular outputHash */
-        TreeMap<String, Integer> outputHashFrequency = new TreeMap<>();
+        HashMap<String, Integer> outputHashCounts = new HashMap<>();
+    
         for (MinerData data : minerData.values()) {
             String outputHash = data.getOutputHash();
-            outputHashFrequency.put(outputHash, outputHashFrequency.getOrDefault(outputHash, 0) + 1);
+            if (outputHashCounts.containsKey(outputHash)) {
+                outputHashCounts.put(outputHash, outputHashCounts.get(outputHash) + 1);
+            } else {
+                outputHashCounts.put(outputHash, 1);
+            }
         }
-
-        Comparator<Map.Entry<String, Integer>> frequencyThenHashComparator = Comparator
-                .comparingInt(Map.Entry<String, Integer>::getValue)
-                .reversed()
-                .thenComparing(Map.Entry::getKey);
-
-        Map.Entry<String, Integer> mostPopularEntry = Collections.max(
-                outputHashFrequency.entrySet(),
-                frequencyThenHashComparator);
-
-        String mostPopularOutputHash = mostPopularEntry.getKey();
-
+    
+        String mostPopularOutputHash = null;
+        int maxCount = 0;
+    
+        for (Map.Entry<String, Integer> entry : outputHashCounts.entrySet()) {
+            if (mostPopularOutputHash == null || entry.getValue() > maxCount) {
+                mostPopularOutputHash = entry.getKey();
+                maxCount = entry.getValue();
+            }
+        }
+    
         this.correctOutput = mostPopularOutputHash;
-
     }
+    
 
     public PRISMBlock(HashMap<String, Transaction> txList, String prevBlockHash, int blockId,
             HashMap<Address, MinerData> minerData) {

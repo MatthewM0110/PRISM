@@ -12,7 +12,7 @@ public class RepData {
     int accuracyCount;
 
     public RepData() {
-        this.currentReputation = 0;
+   
     }
 
     public void addTimeSummation(float time) {
@@ -38,8 +38,8 @@ public class RepData {
         return currentReputation;
     }
 
-    public void setCurrentReputation(float getCurrentReputation) {
-        this.currentReputation = getCurrentReputation;
+    public void setCurrentReputation(float setCurrentReputation) {
+        this.currentReputation = setCurrentReputation;
     }
 
     public int getBlocksParticipated() {
