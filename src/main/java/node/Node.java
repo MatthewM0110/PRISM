@@ -1,11 +1,13 @@
 package node;
 
 import node.blockchain.*;
+import node.blockchain.PRISM.EnumSubWorkflow;
 import node.blockchain.PRISM.MinerData;
 import node.blockchain.PRISM.NodeStats;
 import node.blockchain.PRISM.PRISMTransaction;
 import node.blockchain.PRISM.PRISMTransactionValidator;
 import node.blockchain.PRISM.RepData;
+import node.blockchain.PRISM.SubWorkflow;
 import node.blockchain.PRISM.PRISMBlock;
 import node.blockchain.PRISM.RecordTypes.ProvenanceRecord;
 import node.blockchain.healthcare.*;
@@ -472,19 +474,47 @@ public class Node {
     }
 
     public void delegateWork() {
+        minerData.clear();
+        Random rand = new Random();
+        int myPick = rand.nextInt(10);
+        SubWorkflow myWorkflow;
+        if (myPick == 0) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_0.getSubWorkflow();
+        } else if (myPick == 1) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_1.getSubWorkflow();
+        } else if (myPick == 2) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_2.getSubWorkflow();
+        } else if (myPick == 3) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_3.getSubWorkflow();
+        } else if (myPick == 4) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_4.getSubWorkflow();
+        } else if (myPick == 5) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_5.getSubWorkflow();
+        } else if (myPick == 6) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_6.getSubWorkflow();
+        } else if (myPick == 7) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_7.getSubWorkflow();
+        } else if (myPick == 8) {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_8.getSubWorkflow();
+        } else {
+            myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_9.getSubWorkflow();
+        }
+        int iterator = myWorkflow.getNumSteps();
+
         synchronized (lock) {
-            minerData.clear();
+
             // System.out.println("Node " + myAddress.getPort() + ": delegating work");
-            HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
-                                                                    // counts.
+            float[][][] minerOutput = new float[myWorkflow.getNumSteps()][][]; // minerOutput contains all the hashes
+                                                                               // and their
+            // counts.
+
             // System.out.println("I am quorum members delegating work");
             ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
-
             // System.out.println("Node " + myAddress.getPort() + ": lp: " + localPeers);
 
             for (Address address : localPeers) {
 
-                if (!containsAddress(quorum, address)) {
+                if (!containsAddress(quorum, address) && iterator >=1) {
                     // minerData.put(address, new MinerData(address, 0, "0"));
                     // System.out.println("Node " + myAddress + ": minerData as dekegating work: " +
                     // minerData.keySet());
@@ -492,52 +522,41 @@ public class Node {
 
                     // if my neighbour is a quorum member, returndoWork
                     // System.out.println("send work to " + address.toString());
-                    Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, mempool),
+                    Message reply = Messager.sendTwoWayMessage(address, new Message(Request.DELEGATE_WORK, myWorkflow),
                             myAddress);
-                    String hash = null;
 
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
                         float endTime = (float) System.currentTimeMillis();
 
-                        hash = Hashing.getSHAString((String) reply.getMetadata());
+                        // Feeding all miners the whole workflow and truncating for the purpose of same
+                        // hash
+                        float[][] output = (float[][]) reply.getMetadata();
+                        float[][] shortenedOutput = Arrays.copyOf(output, iterator);
                         // float time = (endTime - startTime);
-                        float time = ThreadLocalRandom.current().nextFloat() * 5.0f;
 
-                        // If the generated time is 0, generate another one
-                        while (time == 0) {
-                            time = ThreadLocalRandom.current().nextFloat() * 5.0f;
-                        }
                         // Looks like we gotta hard code time
-
-                        MinerData singleMinerData = new MinerData(address, time, hash);
+                        String hash = Hashing.getSHAString(output[myWorkflow.getNumSteps() - 1].toString());
+                        MinerData singleMinerData = new MinerData(address, (startTime - endTime), hash);
                         // System.out.println(myAddress + " Single Miner Data : " + singleMinerData);
                         minerData.put(address, singleMinerData);
                         // System.out.println("Node " + myAddress.getPort() + ": delegated work to and
                         // put " + address);
 
-                        if (minerOutput.containsKey(hash)) {
-                            minerOutput.put(hash, minerOutput.get(hash) + 1);
-                        } else {
-                            minerOutput.put(hash, 1);
-                        }
+                        minerOutput[iterator - 1] = shortenedOutput;
                     }
                 }
-            }
-
-            String popularHash = "";
-
-            for (String hash : minerOutput.keySet()) {
-                if (minerOutput.get(popularHash) == null)
-                    popularHash = hash;
-
-                if (minerOutput.get(hash) > minerOutput.get(popularHash)) {
-                    popularHash = hash;
+                if (myWorkflow.getNumSteps() == 1) {
+                    break;
                 }
+                iterator--;
             }
+
+            float[] popularHash = minerOutput[myWorkflow.getNumSteps() - 1][myWorkflow.getNumSteps() - 1];
+
             // System.out.println("Node " + myAddress + ": minerData after delegating work:
             // " + minerData.keySet());
-
-            sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
+            String hash = Hashing.getSHAString(popularHash.toString());
+            sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, hash));
             stateChangeRequest(2);
         }
     }
@@ -691,50 +710,19 @@ public class Node {
 
     // System.out.println("sending mempool hashes ");
 
-    public void doWork(HashMap<String, Transaction> txList, ObjectInputStream oin, ObjectOutputStream oout) {
-        PRISMTransaction PRISMtx = null;
+    
 
-        for (String txHash : txList.keySet()) { // For each transaction in that block (there should only be one
-            // transaction per block) - maybe
-            PRISMtx = (PRISMTransaction) txList.get(txHash);
-        }
+    public void doWork(SubWorkflow workflow, ObjectInputStream oin, ObjectOutputStream oout) {
+        float[][] output = workflow.compute(workflow.getNumSteps() - 1, workflow.getFirstInput(), (float) accuracyPercent);
 
-        // Percentage (from 0 to 1) that controls whether to use PRISMtx.getUID hash or
-        // a random hash
-        // example value, adjust as needed
-
-        // Based on a percentage (0 to 1), this should set hash to the hash of
-        // PRISMtx.getUID. Otherwise, it returns a random hash
-        String hash = null;
-
-        // one
-        String address = String.valueOf(myAddress.getPort());
-        String hashString = Hashing.getSHAString(address);
-        BigInteger hashNumber = new BigInteger(hashString, 16); // Convert hexadecimal string to BigInteger
-
-        Random rand = new Random(hashNumber.longValue());
-        float accuracyPercent = rand.nextFloat();
-        System.out.println(myAddress.getPort() + " : " + accuracyPercent);
-
-        if (Math.random() < accuracyPercent && PRISMtx != null) {
-            hash = Hashing.getSHAString(PRISMtx.getUID()); // This is in place of a true answer's hash
-        } else {
-            hash = Hashing.getSHAString(String.valueOf(Math.random()));
-            // assuming you have a method to generate random hashes
-
-        }
-        // Do work
-
-        if (!participatedBlocks.contains(txList.toString())) {
+        if (!participatedBlocks.contains(workflow.toString())) {
             timesSelectedForMiner++;
-            participatedBlocks.add(txList.toString());
+            participatedBlocks.add(workflow.toString());
         }
-
         try {
-            oout.writeObject(new Message(Request.COMPLETED_WORK, hash));
+            oout.writeObject(new Message(Request.COMPLETED_WORK, output));
             oout.flush();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
