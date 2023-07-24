@@ -30,38 +30,36 @@ public class PRISMClient {
         this.updateLock = updateLock;
     }
 
-    protected void submitProvenanceRecord(BufferedReader reader) throws IOException, InterruptedException {
+    protected void submitProvenanceRecord() throws IOException, InterruptedException {
         Random rand = new Random();
 
-        for (int i = 0; i < 100; i++) {
-            System.out.println("new TX");
-            alertFullNode();
-            System.out.println("Generating Provenance Record");
-            String workflowID = String.valueOf(rand.nextInt(100));
+        System.out.println("new TX");
+        alertFullNode();
+        System.out.println("Generating Provenance Record");
+        String workflowID = String.valueOf(rand.nextInt(100));
 
-            System.out.println("WorkflowID:" + workflowID);
-            String inputData = String.valueOf(rand.nextInt(100));
+        System.out.println("WorkflowID:" + workflowID);
+        String inputData = String.valueOf(rand.nextInt(100));
 
-            System.out.println("inputData:" + inputData);
-            String task = String.valueOf(rand.nextInt(100));
+        System.out.println("inputData:" + inputData);
+        String task = String.valueOf(rand.nextInt(100));
 
-            System.out.println("task:" + task);
-            ProvenanceRecord prec = new ProvenanceRecord(inputData, task, workflowID);
-            System.out.println("this is created prec " + prec.toString());
+        System.out.println("task:" + task);
+        ProvenanceRecord prec = new ProvenanceRecord(inputData, task, workflowID);
+        System.out.println("this is created prec " + prec.toString());
 
-            PRISMTransaction ptX = new PRISMTransaction(prec, String.valueOf(System.currentTimeMillis()));
-            System.out.println("PTX Information: " + ptX.getRecord().toString());
-            submitProvenanceTransaction(ptX, fullNodes.get(0));
-            System.out.println("PRISM Transaction Provenance Record Submitted");
-            Thread.sleep(50000);
-        }
+        PRISMTransaction ptX = new PRISMTransaction(prec, String.valueOf(System.currentTimeMillis()));
+        System.out.println("PTX Information: " + ptX.getRecord().toString());
+        submitProvenanceTransaction(ptX, fullNodes.get(0));
+        System.out.println("PRISM Transaction Provenance Record Submitted");
+
     }
 
     protected void alertFullNode() throws IOException {
         synchronized (updateLock) {
             Messager.sendOneWayMessage(new Address(fullNodes.get(0).getPort(), fullNodes.get(0).getHost()),
                     new Message(Message.Request.ALERT_WALLET, myAddress), myAddress);
-            System.out.println("PrismCleitn alerted full node");
+            System.out.println("PrismClient alerted full node");
 
         }
     }

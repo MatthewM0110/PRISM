@@ -144,7 +144,7 @@ public class Client {
             input = mainReader.readLine();
             System.out.println("Input " + input);
 
-            wallet.interpretInput(input, mainReader);
+            wallet.interpretInput(input);
 
         }
     }
@@ -155,7 +155,7 @@ public class Client {
      * @param input the string to interpret
      * @throws InterruptedException
      */
-    public void interpretInput(String input, BufferedReader mainReader) throws InterruptedException {
+    public void interpretInput(String input) throws InterruptedException {
 
         try {
             switch (input) {
@@ -169,7 +169,7 @@ public class Client {
                 /* Submit Transaction */
                 case ("t"):
                     if (use.equals("PRISM"))
-                        prismClient.submitProvenanceRecord(mainReader);
+                        prismClient.submitProvenanceRecord();
                     break;
 
                 /* Print accounts (or something similar depends on use) */
@@ -226,6 +226,7 @@ public class Client {
         }
 
         public void run() {
+            System.out.println("Running auto tx");
             Socket client;
             while (true) {
                 try {
@@ -240,32 +241,8 @@ public class Client {
 
                         if (use.equals("PRISM")) {
 
-                            System.out.println("ALRETED FULL WALLETS");
-                            try {
-                                // Run the shell script
-                                ProcessBuilder pb = new ProcessBuilder("./startAutomateProject.sh");
-                                Process p = pb.start();
-                                int exitCode = p.waitFor(); // Wait for the script to finish
-
-                                if (exitCode == 0) { // The script ran successfully
-                                    // Now call your Java program
-                                    ProcessBuilder pb2 = new ProcessBuilder("java", "-cp",
-                                            "target/network-1.0-SNAPSHOT.jar", "client.Client");
-                                    pb2.redirectInput(new File("inputs.txt")); // Use inputs.txt as the input
-                                    Process p2 = pb2.start();
-                                    p2.waitFor();
-                                } else {
-                                    System.out.println("The script did not run successfully");
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-
                             // PRISMClient.doSomething
                             // Block has been posted, submit new transaction
-                        } else {
-                            MerkleTreeProof mtp = (MerkleTreeProof) incomingMessage.getMetadata();
-                            defiClient.updateAccounts(mtp);
                         }
                     }
                 } catch (IOException e) {

@@ -97,13 +97,10 @@ public class ServerConnection extends Thread {
                 node.receiveSkeleton(blockSkeleton);
                 break;
             case ALERT_WALLET:
-                if (node.USE.equals("Defi")) {
-                    Object[] data = (Object[]) incomingMessage.getMetadata();
-                    node.alertWallet((String) data[0], (Address) data[1]);
-                } else if (node.USE.equals("PRISM")) {
-                    Address incomingAddress = (Address) incomingMessage.getMetadata();
-                    node.alertWallet(null, incomingAddress);
-                }
+
+                Address incomingAddress = (Address) incomingMessage.getMetadata();
+                node.alertWallet(null, incomingAddress);
+
                 break;
             case DELEGATE_WORK:
                 HashMap<String, Transaction> mempool = (HashMap<String, Transaction>) incomingMessage.getMetadata();
@@ -114,7 +111,7 @@ public class ServerConnection extends Thread {
                 break;
             case RECEIVE_ANSWER_HASH:
                 String data2 = (String) incomingMessage.getMetadata();
-                node.recieveAnswerHashLocking(data2); //recieveAnswerHashLocking
+                node.recieveAnswerHashLocking(data2); // recieveAnswerHashLocking
                 break;
             case RECEIVE_MINER_DATA:
                 HashMap<Address, MinerData> data3 = (HashMap<Address, MinerData>) incomingMessage.getMetadata();

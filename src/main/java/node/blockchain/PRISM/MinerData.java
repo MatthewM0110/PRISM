@@ -42,7 +42,9 @@ public class MinerData implements Serializable {
     }
 
     public String toString() {
-        return "Address: " + address + ", timestamp: " + timestamp + ", outputHash: " + outputHash;
+
+        
+        return "Address: " + address.getPort() + ", timestamp: " + timestamp + ", outputHash: " + outputHash.substring(0, 4);
 
     }
 

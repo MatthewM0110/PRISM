@@ -28,7 +28,6 @@ node\communication\messaging\Message.class
 node\blockchain\PRISM\RecordTypes\Record.class
 node\blockchain\defi\Account.class
 node\blockchain\PRISM\RecordTypes\Project.class
-node\blockchain\healthcare\Client.class
 node\blockchain\merkletree\MerkleTree.class
 node\blockchain\PRISM\RecordTypes\ProvenanceRecord.class
 node\blockchain\merkletree\MerkleTree$TransactionComparator.class
@@ -45,6 +44,7 @@ node\blockchain\defi\Wallet$Acceptor.class
 node\blockchain\PRISM\RecordTypes\Record$RecordType.class
 node\blockchain\PRISM\SubWorkflow.class
 client\Client.class
+node\Node$1.class
 node\communication\messaging\Message$Request.class
 node\communication\ServerConnection$1.class
 node\blockchain\PRISM\NodeStats.class

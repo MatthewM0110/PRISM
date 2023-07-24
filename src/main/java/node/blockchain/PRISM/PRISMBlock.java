@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import node.blockchain.Block;
 import node.blockchain.Transaction;
@@ -27,6 +28,7 @@ public class PRISMBlock extends Block {
     }
 
     public HashMap<Address, MinerData> getMinerData() {
+
         return minerData;
     }
 
@@ -34,14 +36,22 @@ public class PRISMBlock extends Block {
         this.minerData = minerData;
 
         /* Looping through minerData to find the most popular outputHash */
-        HashMap<String, Integer> outputHashFrequency = new HashMap<>();
+        TreeMap<String, Integer> outputHashFrequency = new TreeMap<>();
         for (MinerData data : minerData.values()) {
             String outputHash = data.getOutputHash();
             outputHashFrequency.put(outputHash, outputHashFrequency.getOrDefault(outputHash, 0) + 1);
         }
 
-        String mostPopularOutputHash = Collections.max(outputHashFrequency.entrySet(),
-                Comparator.comparingInt(Map.Entry::getValue)).getKey();
+        Comparator<Map.Entry<String, Integer>> frequencyThenHashComparator = Comparator
+                .comparingInt(Map.Entry<String, Integer>::getValue)
+                .reversed()
+                .thenComparing(Map.Entry::getKey);
+
+        Map.Entry<String, Integer> mostPopularEntry = Collections.max(
+                outputHashFrequency.entrySet(),
+                frequencyThenHashComparator);
+
+        String mostPopularOutputHash = mostPopularEntry.getKey();
 
         this.correctOutput = mostPopularOutputHash;
 
