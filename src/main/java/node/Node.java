@@ -489,7 +489,7 @@ public class Node {
         } else {
             myWorkflow = EnumSubWorkflow.SUB_WORKFLOW_9.getSubWorkflow(); 
         } 
-        int iterator = 1;
+        int iterator = myWorkflow.getNumSteps() - 1;
 
         synchronized (lock) {
 
@@ -537,10 +537,10 @@ public class Node {
                         minerOutput[iterator-1]=shortenedOutput;
                     }
                 }
-                if(myWorkflow.getNumSteps() == iterator) {
+                if(myWorkflow.getNumSteps() == 1) {
                     break;
                 }
-                iterator++;
+                iterator--;
             }
 
             Float[] popularHash = minerOutput[myWorkflow.getNumSteps()-1][myWorkflow.getNumSteps()-1];
