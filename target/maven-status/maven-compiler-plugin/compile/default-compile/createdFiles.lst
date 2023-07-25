@@ -43,6 +43,7 @@ client\PRISMClient.class
 node\blockchain\defi\Wallet$Acceptor.class
 node\blockchain\PRISM\RecordTypes\Record$RecordType.class
 node\blockchain\PRISM\SubWorkflow.class
+node\Node$Processes.class
 client\Client.class
 node\Node$1.class
 node\communication\messaging\Message$Request.class
