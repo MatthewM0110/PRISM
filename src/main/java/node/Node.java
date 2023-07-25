@@ -502,7 +502,9 @@ public class Node {
                         hash = reply.getMetadata().toString();
                         System.out.println("output: " + hash);
                         // float time = (endTime - startTime);
-                        float time = ThreadLocalRandom.current().nextFloat() * 5.0f;
+                        Random randSeed = new Random(address.getPort());
+                        float time = randSeed.nextInt(1, 5);
+                        
 
                         // If the generated time is 0, generate another one
                         while (time == 0) {
@@ -712,7 +714,7 @@ public class Node {
         Random random = new Random();
         int value = random.nextInt(1, 100);
         Random randSeed = new Random(myAddress.getPort());
-        float myValue = randSeed.nextInt(0,100);
+        float myValue = randSeed.nextInt(0, 100);
         if (value < myValue) {
             hash = Hashing.getSHAString(String.valueOf(random.nextInt(0, 500)));
         } else {
@@ -1325,10 +1327,10 @@ public class Node {
     HashMap<Processes, Float> timeData = new HashMap<Processes, Float>();
     HashMap<Address, NodeStats> nodeStatsMap = new HashMap<>();
     private int txCount = 0;
-    private int txNum = 10;
+    private int txNum = 30;
     // float startTime = 0;
     float lastStartTime = 0;
-    int iteration =0;
+    int iteration = 0;
 
     /**
      * Adds a block
@@ -1390,7 +1392,8 @@ public class Node {
 
                     for (Address address : repData.keySet()) {
                         if (containsAddress(quorum, address)) {
-                            pw.println(String.valueOf(address.getPort()) + "," + repData.get(address).getCurrentReputation()+","+iteration);
+                            pw.println(String.valueOf(address.getPort()) + ","
+                                    + repData.get(address).getCurrentReputation() + "," + iteration);
                         }
                     }
                     iteration++;
@@ -1584,8 +1587,8 @@ public class Node {
         }
     }
 
-    private float quorumEligibility = 0.35f;
-    private float quorumSubEligibility = 0.3f;
+    private float quorumEligibility = 0.1f;
+    private float quorumSubEligibility = 0.75f;
 
     public ArrayList<Address> deriveQuorum(Block block, int nonce) {
         // System.out.println("Deriving quorum for block " + block.getBlockId());
@@ -1636,10 +1639,10 @@ public class Node {
                 // System.out.println("I'm node " + myAddress + " and I think the quorum
                 // consists of " + quorum.toString());
                 // for (Address address : globalPeers) {
-                //     if (address.getPort() == 8001) {
-                //         quorum.add(address);
+                // if (address.getPort() == 8001) {
+                // quorum.add(address);
 
-                //     }
+                // }
                 // }
 
                 return quorum;
