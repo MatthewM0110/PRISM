@@ -474,7 +474,6 @@ public class Node {
     public void delegateWork() {
 
         synchronized (lock) {
-            quorumTime = System.currentTimeMillis();
             minerData.clear();
 
             // System.out.println("Node " + myAddress.getPort() + ": delegating work");
@@ -538,7 +537,6 @@ public class Node {
             }
             // System.out.println("Node " + myAddress + ": minerData after delegating work:
             // " + minerData.keySet());
-            miningTime = System.currentTimeMillis();
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
             stateChangeRequest(2);
         }
@@ -713,7 +711,9 @@ public class Node {
 
         Random random = new Random();
         int value = random.nextInt(1, 100);
-        if (value < 40) {
+        Random randSeed = new Random(myAddress.getPort());
+        float myValue = randSeed.nextInt(0,100);
+        if (value < myValue) {
             hash = Hashing.getSHAString(String.valueOf(random.nextInt(0, 500)));
         } else {
 
@@ -899,7 +899,6 @@ public class Node {
 
                 throw new RuntimeException(e);
             }
-            endQuorumTime = System.currentTimeMillis();
             sendSigOfBlockHash();
         }
     }
@@ -1301,13 +1300,9 @@ public class Node {
             System.out.println("send message tx");
             oout.writeObject(message);
             oout.flush();
-            Thread.sleep(1000);
             s.close();
         } catch (IOException e) {
             System.out.println("Full node at " + address + " appears down.");
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
     }
 
@@ -1320,7 +1315,7 @@ public class Node {
 
     }
 
-    float startTime = 0;
+    float startTime;
     float quorumTime = 0;
     float endQuorumTime = 0;
     float quorumSelectTime = 0;
@@ -1331,6 +1326,9 @@ public class Node {
     HashMap<Address, NodeStats> nodeStatsMap = new HashMap<>();
     private int txCount = 0;
     private int txNum = 10;
+    // float startTime = 0;
+    float lastStartTime = 0;
+    int iteration =0;
 
     /**
      * Adds a block
@@ -1339,6 +1337,7 @@ public class Node {
      */
     public void addBlock(Block block) {
         stateChangeRequest(0);
+
         // state = 0;
         endTime = System.currentTimeMillis();
         HashMap<String, Transaction> txMap = block.getTxList();
@@ -1368,78 +1367,50 @@ public class Node {
         // // + printingMData.getOutputHash());
 
         // }
+        // System.out.println("block added!");
+
+        txValidator.calculateReputationsData(pBlock, repData);
+        ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
+
+        // System.out.println((System.currentTimeMillis()/ 1000) - startTime);
 
         if (myAddress.getPort() == 8001) {
-            File file2 = new File("processesTime.CSV");
+            File file2 = new File("quorumRep.csv");
             if (file2.length() == 0) {
-
-                try (FileWriter fw = new FileWriter("processesTime.csv", true)) {
-
+                try (FileWriter fw = new FileWriter("quorumRep.csv", true)) {
                     PrintWriter pw2 = new PrintWriter(fw);
-                    pw2.println("Process, Time");
+                    pw2.println("Address,Reputation,Iteration");
                     pw2.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             } else {
-
-                try (FileWriter fw = new FileWriter("processesTime.csv", true)) {
+                try (FileWriter fw = new FileWriter("quorumRep.csv", true)) {
                     PrintWriter pw = new PrintWriter(fw);
 
-                    timeData.put(Processes.MiningProcess, miningTime - quorumTime);
-                    timeData.put(Processes.QuorumProcess, endQuorumTime - quorumTime);
-                    timeData.put(Processes.QuorumDerivationTime, quorumSelectTime - reputationTime);
-                    timeData.put(Processes.ReputationCalculation, reputationTime - startTime);
-                    timeData.put(Processes.TotalTime, endTime - startTime);
-                    System.out.println("startTime: " + startTime);
-                    System.out.println("quorumSelectTime: " + quorumSelectTime);
-                    System.out.println("quorumTime: " + quorumTime);
-                    System.out.println("miningTime: " + miningTime);
-                    System.out.println("reputationTime: " + reputationTime);
-                    System.out.println("endTime: " + endTime);
-                    System.out.println("endQuorumTime: " + endQuorumTime);
-
-                    for (Map.Entry<Processes, Float> entry : timeData.entrySet()) {
-                        pw.println(entry.getKey() + "," + entry.getValue());
+                    for (Address address : repData.keySet()) {
+                        if (containsAddress(quorum, address)) {
+                            pw.println(String.valueOf(address.getPort()) + "," + repData.get(address).getCurrentReputation()+","+iteration);
+                        }
                     }
+                    iteration++;
 
-                    timeData.clear();
-                    startTime = 0;
-                    quorumSelectTime = 0;
-                    quorumTime = 0;
-                    miningTime = 0;
-                    reputationTime = 0;
-                    endTime = 0;
-                    endQuorumTime = 0;
+                    pw.close();
                 } catch (Exception e) {
                     // TODO: handle exception
                 }
-
             }
-
-            // System.out.println(myAddress.getPort() + " :" +
-            // pBlock.getMinerData().values());
-            // System.out.println(myAddress + " | " + repData.toString());
-            // if (myAddress.getPort() == 8000) {
-            // repData.entrySet().stream()
-            // .sorted(Map.Entry.<Address, RepData>comparingByValue(
-            // Comparator.comparingDouble(RepData::getCurrentReputation)).reversed())
-            // .forEach(entry -> System.out
-            // .println(entry.getKey().getPort() + "|" + entry.getValue().toString()));
-
-            // Only perform these operations if myAddress.getPort() == 8000
         }
-        startTime = System.currentTimeMillis();
-        txValidator.calculateReputationsData(pBlock, repData);
-        reputationTime = System.currentTimeMillis();
+
         if (myAddress.getPort() == 8000) {
             // Messager.sendOneWayMessage(myAddress,
             // new Message(Message.Request.ALERT_WALLET),
             // myAddress);
-            for (Address address : repData.keySet()) {
+            // for (Address address : repData.keySet()) {
 
-                System.out.println(address.getPort() + " " + repData.get(address).toString());
-            }
+            // System.out.println(address.getPort() + " " +
+            // repData.get(address).toString());
+            // }
             File file = new File("quorumLocalFairness.csv");
             if (file.length() == 0) {
                 // System.out.println("File length before writing: " + file.length());
@@ -1491,8 +1462,7 @@ public class Node {
         }
         // Miner Data collector
 
-        ArrayList<Address> quorum = deriveQuorum(blockchain.getLast(), 0);
-        quorumSelectTime = System.currentTimeMillis();
+        quorum = deriveQuorum(blockchain.getLast(), 0);
 
         String fileName = myAddress.toString();
         // Create or append to the file
@@ -1517,7 +1487,7 @@ public class Node {
             timeEligibleForMiner++;
         }
 
-        if (DEBUG_LEVEL == 0) {
+        if (DEBUG_LEVEL == 1) {
 
             try {
                 System.out.println(
@@ -1665,12 +1635,12 @@ public class Node {
 
                 // System.out.println("I'm node " + myAddress + " and I think the quorum
                 // consists of " + quorum.toString());
-                for (Address address : globalPeers) {
-                    if (address.getPort() == 8001) {
-                        quorum.add(address);
+                // for (Address address : globalPeers) {
+                //     if (address.getPort() == 8001) {
+                //         quorum.add(address);
 
-                    }
-                }
+                //     }
+                // }
 
                 return quorum;
 
