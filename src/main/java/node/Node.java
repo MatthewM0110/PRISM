@@ -475,7 +475,10 @@ public class Node {
 
         synchronized (lock) {
             minerData.clear();
+            if (myAddress.getPort() == 8001) {
 
+                System.out.println("Delegating Work" + System.currentTimeMillis() / 1000);
+            }
             // System.out.println("Node " + myAddress.getPort() + ": delegating work");
             HashMap<String, Integer> minerOutput = new HashMap<>(); // minerOutput contains all the hashes and their
                                                                     // counts.
@@ -500,11 +503,10 @@ public class Node {
                     if (reply.getRequest().name().equals("COMPLETED_WORK")) {
 
                         hash = reply.getMetadata().toString();
-                        System.out.println("output: " + hash);
+                        // System.out.println("output: " + hash);
                         // float time = (endTime - startTime);
                         Random randSeed = new Random(address.getPort());
                         float time = randSeed.nextInt(1, 5);
-                        
 
                         // If the generated time is 0, generate another one
                         while (time == 0) {
@@ -539,6 +541,10 @@ public class Node {
             }
             // System.out.println("Node " + myAddress + ": minerData after delegating work:
             // " + minerData.keySet());
+            if (myAddress.getPort() == 8001) {
+
+                System.out.println("Got all mienr Data" + System.currentTimeMillis() / 1000);
+            }
             sendOneWayMessageQuorum(new Message(Request.RECEIVE_ANSWER_HASH, popularHash));
             stateChangeRequest(2);
         }
@@ -591,7 +597,7 @@ public class Node {
                 }
 
                 ProvenanceRecord pr = (ProvenanceRecord) prismTransaction.getRecord();
-                System.out.println("popupar answer is " + popularHash);
+                // System.out.println("popupar answer is " + popularHash);
                 pr.setAnswerHash(popularHash);
                 // System.out.println("Node " + myAddress.getPort() + ": about to send
                 // mempool");
@@ -723,7 +729,12 @@ public class Node {
             // assuming you have a method to generate random hashes
         }
         // Do work
-
+        try {
+            Thread.sleep(random.nextInt(1000,5000));
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        };
         if (!participatedBlocks.contains(txList.toString())) {
             timesSelectedForMiner++;
             participatedBlocks.add(txList.toString());
@@ -900,6 +911,10 @@ public class Node {
             } catch (NoSuchAlgorithmException e) {
 
                 throw new RuntimeException(e);
+            }
+            if (myAddress.getPort() == 8001) {
+
+                System.out.println("Finish quorum work" + System.currentTimeMillis() / 1000);
             }
             sendSigOfBlockHash();
         }
@@ -1339,6 +1354,10 @@ public class Node {
      */
     public void addBlock(Block block) {
         stateChangeRequest(0);
+        if (myAddress.getPort() == 8001) {
+
+            System.out.println("Block added" + System.currentTimeMillis() / 1000);
+        }
 
         // state = 0;
         endTime = System.currentTimeMillis();
@@ -1587,8 +1606,8 @@ public class Node {
         }
     }
 
-    private float quorumEligibility = 0.1f;
-    private float quorumSubEligibility = 0.75f;
+    private float quorumEligibility = 0.25f;
+    private float quorumSubEligibility = 0.4f;
 
     public ArrayList<Address> deriveQuorum(Block block, int nonce) {
         // System.out.println("Deriving quorum for block " + block.getBlockId());
@@ -1644,6 +1663,12 @@ public class Node {
 
                 // }
                 // }
+                for (Address address : globalPeers) {
+                    if (address.getPort() == 8001) {
+                        quorum.add(address);
+
+                    }
+                }
 
                 return quorum;
 
